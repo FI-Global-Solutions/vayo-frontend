@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Lock, Eye, EyeOff, Bus, CheckCircle, ShieldCheck } from "lucide-react";
+import { Lock, Eye, EyeOff, CheckCircle, ShieldCheck } from "lucide-react";
+import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { saveAuth, getStoredUser } from "@/store/auth";
@@ -74,10 +75,7 @@ export default function ChangePasswordPage() {
 
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-emerald-600 font-bold text-2xl">
-            <Bus className="h-7 w-7" />
-            VAYO
-          </Link>
+          <VayoLogo height={40} />
 
           <div className="mt-4 w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
             <ShieldCheck className="h-7 w-7 text-emerald-600" />

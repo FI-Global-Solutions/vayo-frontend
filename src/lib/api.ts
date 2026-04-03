@@ -103,22 +103,17 @@ export const adminApi = {
     api.get(`/admin/operators?page=${page}&size=20${status ? `&status=${status}` : ""}`),
   approve: (operatorId: string) => api.patch(`/admin/operators/${operatorId}/approve`),
   suspend: (operatorId: string) => api.patch(`/admin/operators/${operatorId}/suspend`),
+  operatorDocuments: (operatorId: string) =>
+    api.get(`/admin/operators/${operatorId}/documents`),
 };
 
 // ─── Operator ─────────────────────────────────────────────────────────────────
 
 export const operatorApi = {
-  register: (data: {
-    companyName: string;
-    contactEmail: string;
-    contactPhone: string;
-    description?: string;
-    adminFirstName: string;
-    adminLastName: string;
-    adminEmail: string;
-    adminPhone: string;
-    adminPassword: string;
-  }) => api.post("/operator/register", data),
+  register: (formData: FormData) =>
+    api.post("/operator/register", formData, {
+      headers: { "Content-Type": undefined },
+    }),
   conductors: () => api.get("/operator/conductors"),
   createConductor: (data: {
     firstName: string;

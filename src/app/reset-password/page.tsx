@@ -3,7 +3,8 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Lock, Bus, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Lock, CheckCircle, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 
@@ -137,10 +138,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-emerald-600 font-bold text-2xl">
-            <Bus className="h-7 w-7" />
-            VAYO
-          </Link>
+          <VayoLogo height={40} />
           <h1 className="text-xl font-bold text-slate-800 mt-3">Set a new password</h1>
           <p className="text-sm text-slate-500 mt-1">Choose something strong and memorable</p>
         </div>

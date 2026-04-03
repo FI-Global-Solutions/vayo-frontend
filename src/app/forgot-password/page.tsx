@@ -2,7 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
-import { Mail, Bus, ArrowLeft, CheckCircle } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
+import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 
@@ -26,10 +27,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-emerald-600 font-bold text-2xl">
-            <Bus className="h-7 w-7" />
-            VAYO
-          </Link>
+          <VayoLogo height={40} />
           <h1 className="text-xl font-bold text-slate-800 mt-3">Forgot your password?</h1>
           <p className="text-sm text-slate-500 mt-1">
             {sent ? "Check your inbox" : "We'll send a reset link to your email"}

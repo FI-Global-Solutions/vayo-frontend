@@ -3,12 +3,28 @@ import { useEffect, useState } from "react";
 import {
   Building2, Users, Route, Ticket, CheckCircle2,
   Clock, ShieldAlert, TrendingUp, Search, ChevronLeft, ChevronRight,
+  FileText, X, IdCard, Award, ExternalLink, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
 import { PlatformStats, OperatorAdminResponse } from "@/lib/types";
 
 type StatusFilter = "ALL" | "PENDING" | "ACTIVE" | "SUSPENDED";
+
+type OperatorDocument = {
+  id: string;
+  documentType: "NID_FRONT" | "NID_BACK" | "CERTIFICATE";
+  fileName: string;
+  contentType: string;
+  data: string;
+  uploadedAt: string;
+};
+
+const DOC_LABELS: Record<string, string> = {
+  NID_FRONT: "NID — Front",
+  NID_BACK: "NID — Back",
+  CERTIFICATE: "Certificate",
+};
 
 const STATUS_STYLES: Record<string, string> = {
   PENDING:   "bg-amber-50 text-amber-700 border-amber-200",
@@ -41,6 +57,10 @@ export default function AdminDashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingOps, setLoadingOps] = useState(true);
   const [actioning, setActioning] = useState<string | null>(null);
+  const [docsOperator, setDocsOperator] = useState<OperatorAdminResponse | null>(null);
+  const [docs, setDocs] = useState<OperatorDocument[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [activeDoc, setActiveDoc] = useState<OperatorDocument | null>(null);
 
   useEffect(() => {
     adminApi.dashboard()
@@ -87,6 +107,23 @@ export default function AdminDashboardPage() {
       toast.error(err?.response?.data?.message ?? "Failed to suspend operator");
     } finally {
       setActioning(null);
+    }
+  };
+
+  const openDocs = async (op: OperatorAdminResponse) => {
+    setDocsOperator(op);
+    setDocs([]);
+    setActiveDoc(null);
+    setLoadingDocs(true);
+    try {
+      const res = await adminApi.operatorDocuments(op.id);
+      const list: OperatorDocument[] = res.data.data ?? [];
+      setDocs(list);
+      if (list.length > 0) setActiveDoc(list[0]);
+    } catch {
+      toast.error("Failed to load documents");
+    } finally {
+      setLoadingDocs(false);
     }
   };
 
@@ -209,6 +246,15 @@ export default function AdminDashboardPage() {
                     {op.status}
                   </span>
                   <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openDocs(op)}
+                      title="View submitted documents"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 flex items-center gap-1"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Docs
+                    </button>
                     {op.status === "PENDING" && (
                       <button
                         type="button"
@@ -251,6 +297,7 @@ export default function AdminDashboardPage() {
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    aria-label="Previous page"
                     disabled={page === 0}
                     onClick={() => setPage((p) => p - 1)}
                     className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
@@ -259,6 +306,7 @@ export default function AdminDashboardPage() {
                   </button>
                   <button
                     type="button"
+                    aria-label="Next page"
                     disabled={page >= totalPages - 1}
                     onClick={() => setPage((p) => p + 1)}
                     className="p-1.5 rounded-lg border border-slate-200 disabled:opacity-40 hover:bg-slate-50"
@@ -271,6 +319,113 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {/* ── Document Viewer Modal ── */}
+      {docsOperator && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+              <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                {docsOperator.companyName?.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-slate-800 text-sm">{docsOperator.companyName}</p>
+                <p className="text-xs text-slate-400">Submitted documents</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close documents panel"
+                onClick={() => setDocsOperator(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {loadingDocs ? (
+              <div className="flex-1 flex items-center justify-center py-16">
+                <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
+              </div>
+            ) : docs.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-16 text-slate-400">
+                <FileText className="h-10 w-10 mb-3 text-slate-200" />
+                <p className="text-sm font-medium">No documents submitted</p>
+                <p className="text-xs mt-1">This operator did not upload any documents during registration.</p>
+              </div>
+            ) : (
+              <div className="flex flex-1 overflow-hidden">
+                {/* Sidebar — doc list */}
+                <div className="w-48 flex-shrink-0 border-r border-slate-100 overflow-y-auto p-3 space-y-1">
+                  {docs.map((doc) => {
+                    const isNid = doc.documentType.startsWith("NID");
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => setActiveDoc(doc)}
+                        className={`w-full text-left rounded-xl px-3 py-2.5 transition-colors flex items-center gap-2
+                          ${activeDoc?.id === doc.id
+                            ? "bg-emerald-50 border border-emerald-200"
+                            : "hover:bg-slate-50 border border-transparent"}`}
+                      >
+                        {isNid
+                          ? <IdCard className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+                          : <Award className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />}
+                        <span className="text-xs font-medium text-slate-700 truncate">
+                          {DOC_LABELS[doc.documentType] ?? doc.documentType}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Preview pane */}
+                <div className="flex-1 overflow-auto p-4 flex flex-col">
+                  {activeDoc && (
+                    <>
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-700">
+                            {DOC_LABELS[activeDoc.documentType] ?? activeDoc.documentType}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">{activeDoc.fileName}</p>
+                        </div>
+                        <a
+                          href={`data:${activeDoc.contentType};base64,${activeDoc.data}`}
+                          download={activeDoc.fileName}
+                          className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Download
+                        </a>
+                      </div>
+
+                      {activeDoc.contentType === "application/pdf" ? (
+                        <iframe
+                          src={`data:application/pdf;base64,${activeDoc.data}`}
+                          title={activeDoc.fileName}
+                          className="flex-1 w-full rounded-xl border border-slate-200 min-h-[400px]"
+                        />
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center bg-slate-50 rounded-xl border border-slate-200 p-4">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`data:${activeDoc.contentType};base64,${activeDoc.data}`}
+                            alt={activeDoc.fileName}
+                            className="max-w-full max-h-[500px] object-contain rounded-lg shadow"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { User, Mail, Phone, Lock, Bus, Eye, EyeOff, MessageSquare, RefreshCw } from "lucide-react";
+import { User, Mail, Phone, Lock, Eye, EyeOff, MessageSquare, RefreshCw } from "lucide-react";
+import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { saveAuth } from "@/store/auth";
@@ -118,10 +119,7 @@ export default function RegisterPage() {
       <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 text-emerald-600 font-bold text-2xl">
-              <Bus className="h-7 w-7" />
-              VAYO
-            </Link>
+            <VayoLogo height={40} />
             <div className="mt-4 w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <MessageSquare className="h-7 w-7 text-emerald-600" />
             </div>
@@ -187,10 +185,7 @@ export default function RegisterPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-emerald-600 font-bold text-2xl">
-            <Bus className="h-7 w-7" />
-            VAYO
-          </Link>
+          <VayoLogo height={40} />
           <h1 className="text-xl font-bold text-slate-800 mt-3">Create your account</h1>
           <p className="text-sm text-slate-500 mt-1">Book buses across East Africa</p>
         </div>

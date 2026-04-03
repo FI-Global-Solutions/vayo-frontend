@@ -2,9 +2,10 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, Bus, LogOut, LayoutDashboard, Ticket, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, Ticket, ChevronDown } from "lucide-react";
 import { getStoredUser, clearAuth } from "@/store/auth";
 import { AuthUser } from "@/lib/types";
+import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 
 function getInitials(user: AuthUser) {
@@ -70,10 +71,7 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-xl text-emerald-600">
-            <Bus className="h-7 w-7" />
-            <span>VAYO</span>
-          </Link>
+          <VayoLogo height={64} />
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
