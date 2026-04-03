@@ -4,21 +4,24 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ChevronRight, Phone, Mail, User, Smartphone, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { ChevronRight, Phone, Mail, User, XCircle, Loader2, CreditCard } from "lucide-react";
 import { bookingApi, paymentApi } from "@/lib/api";
 import { getStoredUser } from "@/store/auth";
+
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    FlutterwaveCheckout: (config: any) => { close: () => void };
+  }
+}
 
 const schema = z.object({
   passengerName: z.string().min(3, "Full name required"),
   passengerPhone: z.string().min(9, "Valid phone number required"),
   passengerEmail: z.string().email("Valid email required").optional().or(z.literal("")),
-  momoPhone: z.string().min(9, "Enter your MoMo number"),
 });
 
 type FormData = z.infer<typeof schema>;
-
-const POLL_INTERVAL_MS = 3000;
-const POLL_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 
 function CheckoutPage() {
   const params = useSearchParams();
@@ -27,58 +30,38 @@ function CheckoutPage() {
   const amount = Number(params.get("amount") ?? 0);
   const router = useRouter();
 
-  const [step, setStep] = useState<"details" | "payment" | "waiting" | "failed">("details");
+  const [step, setStep] = useState<"details" | "paying" | "verifying" | "failed">("details");
   const [bookingId, setBookingId] = useState("");
   const [bookingReference, setBookingReference] = useState("");
   const [error, setError] = useState("");
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flwModalRef = useRef<{ close: () => void } | null>(null);
 
   const user = getStoredUser();
   const SERVICE_FEE = 300;
+  const total = amount + SERVICE_FEE;
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       passengerName: user ? `${user.firstName} ${user.lastName}` : "",
       passengerPhone: user?.phone ?? "",
       passengerEmail: user?.email ?? "",
-      momoPhone: user?.phone ?? "",
     },
   });
 
-  // Clean up polling on unmount
+  // Load Flutterwave inline script
   useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
+    const script = document.createElement("script");
+    script.src = "https://checkout.flutterwave.com/v3.js";
+    script.async = true;
+    document.body.appendChild(script);
+    return () => { document.body.removeChild(script); };
   }, []);
 
-  const startPolling = (ref: string) => {
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await paymentApi.status(ref);
-        const status = res.data.data?.status;
-        if (status === "CONFIRMED") {
-          clearInterval(pollRef.current!);
-          clearTimeout(timeoutRef.current!);
-          router.push(`/booking/${ref}`);
-        } else if (status === "EXPIRED" || status === "FAILED") {
-          clearInterval(pollRef.current!);
-          clearTimeout(timeoutRef.current!);
-          setStep("failed");
-        }
-      } catch {
-        // silent — keep polling
-      }
-    }, POLL_INTERVAL_MS);
-
-    timeoutRef.current = setTimeout(() => {
-      clearInterval(pollRef.current!);
-      setStep("failed");
-    }, POLL_TIMEOUT_MS);
-  };
+  // Close modal on unmount
+  useEffect(() => {
+    return () => { flwModalRef.current?.close(); };
+  }, []);
 
   const onDetailsSubmit = async (data: FormData) => {
     setError("");
@@ -90,25 +73,62 @@ function CheckoutPage() {
         passengerPhone: data.passengerPhone,
         passengerEmail: data.passengerEmail || undefined,
       });
-      setBookingId(res.data.data.bookingId);
-      setStep("payment");
+      const id = res.data.data.bookingId;
+      setBookingId(id);
+      openFlutterwave(id, data);
     } catch (e: unknown) {
       const axiosErr = e as { response?: { data?: { message?: string } } };
       setError(axiosErr?.response?.data?.message ?? "Failed to initiate booking. Please try again.");
     }
   };
 
-  const onPaymentSubmit = async (data: FormData) => {
+  const openFlutterwave = (bId: string, data: FormData) => {
+    setStep("paying");
+    const txRef = `VAYO-${bId}-${Date.now()}`;
+
+    flwModalRef.current = window.FlutterwaveCheckout({
+      public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+      tx_ref: txRef,
+      amount: total,
+      currency: "RWF",
+      payment_options: "card, mobilemoneyrwanda",
+      customer: {
+        email: data.passengerEmail || `${data.passengerPhone}@vayo.rw`,
+        phone_number: data.passengerPhone,
+        name: data.passengerName,
+      },
+      customizations: {
+        title: "VAYO Bus Booking",
+        description: `Seats ${seats.join(", ")} — ${seats.length} passenger${seats.length > 1 ? "s" : ""}`,
+        logo: `${window.location.origin}/assets/vayo-trans.png`,
+      },
+      callback: async (response: { transaction_id: string; status: string }) => {
+        flwModalRef.current?.close();
+        if (response.status === "successful") {
+          setStep("verifying");
+          await verifyPayment(bId, String(response.transaction_id));
+        } else {
+          setStep("failed");
+        }
+      },
+      onclose: () => {
+        // User closed modal without paying
+        if (step === "paying") setStep("details");
+      },
+    });
+  };
+
+  const verifyPayment = async (bId: string, flwTransactionId: string) => {
     setError("");
     try {
-      const res = await paymentApi.initiate(bookingId, data.momoPhone);
+      const res = await paymentApi.verify(bId, flwTransactionId);
       const ref = res.data.data?.bookingReference;
       setBookingReference(ref);
-      setStep("waiting");
-      startPolling(ref);
+      router.push(`/booking/${ref}`);
     } catch (e: unknown) {
       const axiosErr = e as { response?: { data?: { message?: string } } };
-      setError(axiosErr?.response?.data?.message ?? "Payment failed. Please try again.");
+      setError(axiosErr?.response?.data?.message ?? "Payment verification failed. Please contact support.");
+      setStep("failed");
     }
   };
 
@@ -138,7 +158,7 @@ function CheckoutPage() {
           </div>
           <div className="flex justify-between font-bold text-emerald-900 border-t border-emerald-200 pt-2 mt-2">
             <span>Total</span>
-            <span>{(amount + SERVICE_FEE).toLocaleString()} RWF</span>
+            <span>{total.toLocaleString()} RWF</span>
           </div>
         </div>
       </div>
@@ -150,7 +170,7 @@ function CheckoutPage() {
       )}
 
       {/* Step 1: Passenger details */}
-      {step === "details" && (
+      {(step === "details" || step === "paying") && (
         <form onSubmit={handleSubmit(onDetailsSubmit)} className="space-y-4">
           <h2 className="font-bold text-slate-800">Passenger Details</h2>
 
@@ -185,64 +205,41 @@ function CheckoutPage() {
             </div>
           </div>
 
+          {/* Payment method info */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+            <CreditCard className="h-4 w-4 text-slate-400 flex-shrink-0" />
+            <p className="text-xs text-slate-500">Pay securely with <span className="font-medium text-slate-700">Card</span> or <span className="font-medium text-slate-700">Mobile Money (MTN/Airtel)</span> via Flutterwave</p>
+          </div>
+
           <button type="submit" disabled={isSubmitting}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2">
-            {isSubmitting ? "Saving..." : "Continue to Payment →"}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2 flex items-center justify-center gap-2">
+            {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</> : `Pay ${total.toLocaleString()} RWF →`}
           </button>
         </form>
       )}
 
-      {/* Step 2: MoMo payment */}
-      {step === "payment" && (
-        <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
-          <h2 className="font-bold text-slate-800">Pay with Mobile Money</h2>
-          <p className="text-sm text-slate-500">Enter your MTN MoMo or Airtel Money number. You will receive a USSD prompt on your phone to confirm the payment.</p>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Mobile Money Number *</label>
-            <div className="relative">
-              <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input {...register("momoPhone")} placeholder="+250788000000"
-                className="w-full pl-9 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-            </div>
-            {errors.momoPhone && <p className="text-red-500 text-xs mt-1">{errors.momoPhone.message}</p>}
-          </div>
-
-          <div className="flex gap-3 pt-2">
-            <button type="button" onClick={() => setStep("details")}
-              className="flex-1 border border-slate-200 text-slate-600 font-medium py-3 rounded-xl hover:bg-slate-50">
-              ← Back
-            </button>
-            <button type="submit" disabled={isSubmitting}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl">
-              {isSubmitting ? "Sending..." : `Pay ${(amount + SERVICE_FEE).toLocaleString()} RWF`}
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Step 3: Waiting for USSD confirmation */}
-      {step === "waiting" && (
+      {/* Verifying */}
+      {step === "verifying" && (
         <div className="text-center py-10">
           <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
           </div>
-          <h2 className="font-bold text-slate-800 text-lg mb-2">Check your phone</h2>
-          <p className="text-sm text-slate-500 mb-1">A USSD prompt has been sent to your Mobile Money number.</p>
-          <p className="text-sm text-slate-500">Enter your PIN to confirm the payment of <span className="font-semibold text-slate-700">{(amount + SERVICE_FEE).toLocaleString()} RWF</span>.</p>
-          <p className="text-xs text-slate-400 mt-6">Waiting for confirmation<span className="animate-pulse">...</span></p>
-          <p className="text-xs font-mono text-slate-400 mt-1">{bookingReference}</p>
+          <h2 className="font-bold text-slate-800 text-lg mb-2">Confirming your booking...</h2>
+          <p className="text-sm text-slate-500">Please wait while we verify your payment.</p>
+          {bookingReference && <p className="text-xs font-mono text-slate-400 mt-4">{bookingReference}</p>}
         </div>
       )}
 
-      {/* Step 4: Failed / timed out */}
+      {/* Failed */}
       {step === "failed" && (
         <div className="text-center py-10">
           <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <XCircle className="h-8 w-8 text-red-400" />
           </div>
-          <h2 className="font-bold text-slate-800 text-lg mb-2">Payment not confirmed</h2>
-          <p className="text-sm text-slate-500 mb-6">The payment was not completed in time or was rejected. Your seat reservation has expired.</p>
+          <h2 className="font-bold text-slate-800 text-lg mb-2">Payment not completed</h2>
+          <p className="text-sm text-slate-500 mb-6">
+            {error || "The payment was not completed or could not be verified. Your seat reservation may have expired."}
+          </p>
           <button type="button" onClick={() => router.back()}
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl text-sm">
             Try Again

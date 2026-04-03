@@ -81,8 +81,8 @@ export const bookingApi = {
 // ─── Payments ────────────────────────────────────────────────────────────────
 
 export const paymentApi = {
-  initiate: (bookingId: string, phone: string) =>
-    api.post("/payments/initiate", { bookingId, phone }),
+  verify: (bookingId: string, flwTransactionId: string) =>
+    api.post("/payments/verify", { bookingId, flwTransactionId }),
   status: (bookingReference: string) =>
     api.get<{ data: { status: string } }>(`/payments/status/${bookingReference}`),
 };
