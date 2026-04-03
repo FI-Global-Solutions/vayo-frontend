@@ -119,7 +119,7 @@ export default function RegisterPage() {
       <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <VayoLogo height={40} />
+            <VayoLogo height={64} transparent />
             <div className="mt-4 w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <MessageSquare className="h-7 w-7 text-emerald-600" />
             </div>
@@ -185,7 +185,7 @@ export default function RegisterPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <VayoLogo height={40} />
+          <VayoLogo height={64} transparent />
           <h1 className="text-xl font-bold text-slate-800 mt-3">Create your account</h1>
           <p className="text-sm text-slate-500 mt-1">Book buses across East Africa</p>
         </div>

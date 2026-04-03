@@ -117,7 +117,7 @@ export default function LoginPage() {
       <div className="min-h-[80vh] flex items-center justify-center px-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <VayoLogo height={40} className="mb-2" />
+            <VayoLogo height={64} transparent className="mb-2" />
             <h1 className="text-xl font-bold text-slate-800 mt-3">Verify it&apos;s you</h1>
             <p className="text-sm text-slate-500 mt-1">
               We sent a 6-digit code to <span className="font-semibold text-slate-700">{maskedPhone}</span>
@@ -178,7 +178,7 @@ export default function LoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <VayoLogo height={40} className="mb-2" />
+          <VayoLogo height={64} transparent className="mb-2" />
           <h1 className="text-xl font-bold text-slate-800 mt-3">Welcome back</h1>
           <p className="text-sm text-slate-500 mt-1">Log in to your account</p>
         </div>
