@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+  --vayo-green: #059669;
+  --vayo-green-dark: #047857;
+  --vayo-orange: #f97316;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Smooth transitions everywhere */
+button, a, input, select {
+  transition: all 0.15s ease;
+}
+
+/* Hide scrollbar on seat map but keep scrollable */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* react-day-picker overrides — keep it clean */
+.rdp { --rdp-cell-size: 36px; --rdp-accent-color: #059669; --rdp-background-color: #ecfdf5; margin: 0; }
+.rdp-day_selected:not([disabled]) { background-color: #059669 !important; color: white !important; font-weight: 600; }
+.rdp-day:hover:not([disabled]):not(.rdp-day_selected) { background-color: #ecfdf5; color: #065f46; }
+.rdp-day_today:not(.rdp-day_selected) { border: 1.5px solid #059669; color: #059669; font-weight: 600; }
+.rdp-button:focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+.rdp-nav_button { border-radius: 8px !important; }
+.rdp-caption_label { font-size: 0.875rem; font-weight: 600; color: #1e293b; }
+.rdp-head_cell { font-size: 0.75rem; font-weight: 500; color: #94a3b8; }
+
+/* ── Print styles ───────────────────────────────────────────────────────── */
+@media print {
+  /* Reset page background */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide structural chrome */
+  header, footer, nav { display: none !important; }
+
+  /* Hide utility UI that shouldn't print */
+  .no-print { display: none !important; }
+
+  /* Ticket card — ensure borders & colours survive print */
+  .print-ticket {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  /* Manifest — full width, allow page breaks between rows */
+  .print-manifest {
+    width: 100%;
+  }
+
+  /* Force colour backgrounds (Chrome requires -webkit-print-color-adjust) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  @page {
+    margin: 16mm;
+    size: A4;
+  }
+}
