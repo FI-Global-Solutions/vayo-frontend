@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Phone, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
@@ -13,6 +13,21 @@ import { AuthResponse } from "@/lib/types";
 type FormData = { identifier: string; password: string };
 type Step = "form" | "otp";
 
+// Returns true if the raw input looks like a phone (all digits, no @)
+function isPhoneInput(value: string) {
+  return /^\d+$/.test(value.trim());
+}
+
+function validateIdentifier(value: string) {
+  if (!value) return "Email or phone number is required";
+  const trimmed = value.trim();
+  if (isPhoneInput(trimmed)) {
+    if (!/^\d{9}$/.test(trimmed)) return "Enter 9 digits (e.g. 788000000)";
+    if (!/^(79|78|73)/.test(trimmed)) return "Number must start with 79, 78, or 73";
+  }
+  return true;
+}
+
 export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState<Step>("form");
@@ -20,9 +35,18 @@ export default function LoginPage() {
   const [maskedPhone, setMaskedPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [identifierValue, setIdentifierValue] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
-  const { register, handleSubmit, getValues, formState: { isSubmitting } } = useForm<FormData>();
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    setValue,
+    formState: { isSubmitting, errors },
+  } = useForm<FormData>({ mode: "onTouched" });
+
+  const phoneMode = isPhoneInput(identifierValue);
 
   const finishLogin = (d: AuthResponse) => {
     saveAuth(d.accessToken, {
@@ -43,10 +67,11 @@ export default function LoginPage() {
   };
 
   const onSubmit = async (data: FormData) => {
+    // If phone mode, prepend +250 before sending
+    const identifier = phoneMode ? "+250" + data.identifier.trim() : data.identifier.trim();
     try {
-      const res = await authApi.login(data.identifier, data.password);
+      const res = await authApi.login(identifier, data.password);
       if (res.status === 202) {
-        // Phone login — OTP required
         setPendingPhone(res.data.data.phone);
         setMaskedPhone(res.data.data.maskedPhone);
         setOtp(["", "", "", "", "", ""]);
@@ -57,7 +82,7 @@ export default function LoginPage() {
       }
     } catch (e: unknown) {
       const axiosErr = e as { response?: { data?: { message?: string } } };
-      toast.error(axiosErr?.response?.data?.message ?? "Invalid credentials");
+      toast.error(axiosErr?.response?.data?.message ?? "Invalid credentials. Please try again.");
     }
   };
 
@@ -104,7 +129,8 @@ export default function LoginPage() {
   const handleResend = async () => {
     try {
       const { identifier, password } = getValues();
-      const res = await authApi.login(identifier, password);
+      const resolvedIdentifier = isPhoneInput(identifier) ? "+250" + identifier.trim() : identifier.trim();
+      const res = await authApi.login(resolvedIdentifier, password);
       if (res.status === 202) toast.success("New code sent");
     } catch {
       toast.error("Could not resend code");
@@ -184,30 +210,72 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email or phone number</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  {...register("identifier", { required: true })}
-                  type="text"
-                  placeholder="you@email.com or +250788000000"
-                  autoComplete="username"
-                  className="w-full pl-9 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+                Email or phone number
+              </label>
+              {phoneMode ? (
+                /* Phone mode: show Rwanda prefix */
+                <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${errors.identifier ? "border-red-400" : "border-slate-200"}`}>
+                  <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 shrink-0">
+                    <span className="text-base leading-none">🇷🇼</span>
+                    <span className="text-sm font-medium text-slate-600">+250</span>
+                  </div>
+                  <input
+                    {...register("identifier", { validate: validateIdentifier })}
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="788000000"
+                    maxLength={9}
+                    autoComplete="username"
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "");
+                      setValue("identifier", val);
+                      setIdentifierValue(val);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!/^\d$/.test(e.key) && !["Backspace","Delete","ArrowLeft","ArrowRight","Tab"].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    className="flex-1 px-3 py-3 text-sm bg-white focus:outline-none"
+                  />
+                </div>
+              ) : (
+                /* Email / free-text mode */
+                <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${errors.identifier ? "border-red-400" : "border-slate-200"}`}>
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    {...register("identifier", { validate: validateIdentifier })}
+                    type="text"
+                    placeholder="you@email.com or 788000000"
+                    autoComplete="username"
+                    onChange={(e) => {
+                      setValue("identifier", e.target.value);
+                      setIdentifierValue(e.target.value);
+                    }}
+                    className="w-full pl-9 pr-4 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
+                  />
+                </div>
+              )}
+              {errors.identifier && (
+                <p className="text-red-500 text-xs mt-1">{errors.identifier.message}</p>
+              )}
+              {phoneMode && !errors.identifier && (
+                <p className="text-xs text-slate-400 mt-1">MTN or Airtel Rwanda (78, 79, 73)</p>
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
-              <div className="relative">
+              <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${errors.password ? "border-red-400" : "border-slate-200"}`}>
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
-                  {...register("password", { required: true })}
+                  {...register("password", { required: "Password is required" })}
                   type={showPass ? "text" : "password"}
                   placeholder="Your password"
-                  className="w-full pl-9 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full pl-9 pr-10 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
                 />
                 <button
                   type="button"
@@ -217,6 +285,9 @@ export default function LoginPage() {
                   {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
+              )}
             </div>
 
             <div className="flex justify-end -mt-1">
