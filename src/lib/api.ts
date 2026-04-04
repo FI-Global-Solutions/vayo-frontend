@@ -76,6 +76,7 @@ export const bookingApi = {
   initiate: (data: object) => api.post("/bookings/initiate", data),
   myBookings: () => api.get("/bookings/my-bookings"),
   ticket: (reference: string) => api.get(`/bookings/${reference}/ticket`),
+  cancel: (reference: string) => api.post(`/bookings/${reference}/cancel`),
 };
 
 // ─── Payments ────────────────────────────────────────────────────────────────

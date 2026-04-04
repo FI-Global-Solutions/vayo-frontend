@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Filter, SlidersHorizontal, ArrowDownUp, Bus } from "lucide-react";
+import { ArrowDownUp, Bus, SlidersHorizontal, X } from "lucide-react";
 import SearchForm from "@/components/search/SearchForm";
 import TripCard from "@/components/trips/TripCard";
 import { searchApi } from "@/lib/api";
@@ -9,6 +9,16 @@ import { TripSearchResult } from "@/lib/types";
 import { format } from "date-fns";
 
 type SortKey = "departure" | "price_asc" | "price_desc" | "seats";
+
+const BUS_TYPES = ["MINIBUS", "STANDARD", "LUXURY", "SLEEPER"] as const;
+type BusType = (typeof BUS_TYPES)[number];
+
+const BUS_TYPE_LABELS: Record<BusType, string> = {
+  MINIBUS: "Minibus",
+  STANDARD: "Standard",
+  LUXURY: "Luxury",
+  SLEEPER: "Sleeper",
+};
 
 function SearchPage() {
   const params = useSearchParams();
@@ -20,6 +30,9 @@ function SearchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sort, setSort] = useState<SortKey>("departure");
+  const [selectedTypes, setSelectedTypes] = useState<Set<BusType>>(new Set());
+  const [minSeats, setMinSeats] = useState(1);
+  const [showFilters, setShowFilters] = useState(false);
 
   const fetchTrips = useCallback(async () => {
     if (!origin || !destination || !date) return;
@@ -37,7 +50,33 @@ function SearchPage() {
 
   useEffect(() => { fetchTrips(); }, [fetchTrips]);
 
-  const sorted = [...trips].sort((a, b) => {
+  const toggleType = (t: BusType) => {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev);
+      next.has(t) ? next.delete(t) : next.add(t);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSelectedTypes(new Set());
+    setMinSeats(1);
+  };
+
+  const activeFilterCount = selectedTypes.size + (minSeats > 1 ? 1 : 0);
+
+  // Available bus types in current results (only show chips that have at least one trip)
+  const availableTypes = BUS_TYPES.filter((t) =>
+    trips.some((trip) => trip.busType === t)
+  );
+
+  const filtered = trips.filter((trip) => {
+    if (selectedTypes.size > 0 && !selectedTypes.has(trip.busType as BusType)) return false;
+    if (trip.availableSeats < minSeats) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sort === "price_asc") return a.price - b.price;
     if (sort === "price_desc") return b.price - a.price;
     if (sort === "seats") return b.availableSeats - a.availableSeats;
@@ -56,30 +95,118 @@ function SearchPage() {
         <SearchForm />
       </div>
 
-      {/* Route header */}
+      {/* Route header + controls */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h1 className="text-lg font-bold text-slate-800">
             {origin} → {destination}
           </h1>
-          <p className="text-sm text-slate-500">{formattedDate} · {trips.length} bus{trips.length !== 1 ? "es" : ""} found</p>
+          <p className="text-sm text-slate-500">
+            {formattedDate} · {trips.length} bus{trips.length !== 1 ? "es" : ""} found
+            {activeFilterCount > 0 && (
+              <span className="ml-1 text-emerald-600">· {sorted.length} shown</span>
+            )}
+          </p>
         </div>
 
-        {/* Sort */}
         <div className="flex items-center gap-2">
-          <ArrowDownUp className="h-4 w-4 text-slate-400" />
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          {/* Filter toggle */}
+          <button
+            type="button"
+            onClick={() => setShowFilters((s) => !s)}
+            className={`flex items-center gap-1.5 text-sm border rounded-lg px-3 py-1.5 transition-colors ${
+              activeFilterCount > 0
+                ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+            }`}
           >
-            <option value="departure">Earliest first</option>
-            <option value="price_asc">Cheapest first</option>
-            <option value="price_desc">Most expensive first</option>
-            <option value="seats">Most seats available</option>
-          </select>
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-emerald-600 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+
+          {/* Sort */}
+          <div className="flex items-center gap-1.5">
+            <ArrowDownUp className="h-4 w-4 text-slate-400" />
+            <select
+              aria-label="Sort trips"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="departure">Earliest first</option>
+              <option value="price_asc">Cheapest first</option>
+              <option value="price_desc">Most expensive first</option>
+              <option value="seats">Most seats available</option>
+            </select>
+          </div>
         </div>
       </div>
+
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="bg-white border border-slate-200 rounded-xl p-4 mb-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-slate-700">Filters</span>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+              >
+                <X className="h-3 w-3" /> Clear all
+              </button>
+            )}
+          </div>
+
+          {/* Bus type chips */}
+          {availableTypes.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-2">Bus type</p>
+              <div className="flex flex-wrap gap-2">
+                {availableTypes.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleType(t)}
+                    className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                      selectedTypes.has(t)
+                        ? "bg-emerald-600 border-emerald-600 text-white"
+                        : "bg-white border-slate-200 text-slate-600 hover:border-emerald-400"
+                    }`}
+                  >
+                    {BUS_TYPE_LABELS[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Min seats slider */}
+          <div>
+            <p className="text-xs font-medium text-slate-500 mb-2">
+              Minimum available seats: <span className="text-emerald-600 font-semibold">{minSeats}</span>
+            </p>
+            <input
+              type="range"
+              aria-label="Minimum available seats"
+              min={1}
+              max={10}
+              value={minSeats}
+              onChange={(e) => setMinSeats(Number(e.target.value))}
+              className="w-full accent-emerald-600"
+            />
+            <div className="flex justify-between text-xs text-slate-400 mt-1">
+              <span>1</span>
+              <span>10+</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {loading ? (
@@ -100,16 +227,28 @@ function SearchPage() {
       ) : error ? (
         <div className="text-center py-16">
           <p className="text-red-500 text-sm mb-3">{error}</p>
-          <button onClick={fetchTrips} className="text-sm text-emerald-600 underline">Try again</button>
+          <button type="button" onClick={fetchTrips} className="text-sm text-emerald-600 underline">Try again</button>
         </div>
       ) : sorted.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-slate-200">
           <Bus className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-          <h3 className="font-semibold text-slate-700 mb-1">No buses found</h3>
+          <h3 className="font-semibold text-slate-700 mb-1">
+            {activeFilterCount > 0 ? "No buses match your filters" : "No buses found"}
+          </h3>
           <p className="text-sm text-slate-400 mb-4">
-            No buses available for this route on {formattedDate}.
+            {activeFilterCount > 0
+              ? "Try adjusting or clearing your filters."
+              : `No buses available for this route on ${formattedDate}.`}
           </p>
-          <p className="text-xs text-slate-400">Try a different date or check back later.</p>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-sm text-emerald-600 underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
