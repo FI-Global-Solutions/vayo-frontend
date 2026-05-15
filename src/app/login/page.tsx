@@ -60,8 +60,8 @@ export default function LoginPage() {
     });
     toast.success(`Welcome back, ${d.firstName}!`);
     if (d.mustResetPassword) router.push("/account/password");
-    else if (d.role === "OPERATOR_ADMIN") router.push("/operator/dashboard");
     else if (d.role === "ADMIN") router.push("/admin/dashboard");
+    else if (["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(d.role)) router.push("/operator/dashboard");
     else if (d.role === "CONDUCTOR") router.push("/conductor/trips");
     else router.push("/");
   };

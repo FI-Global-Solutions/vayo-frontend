@@ -115,15 +115,6 @@ export const operatorApi = {
     api.post("/operator/register", formData, {
       headers: { "Content-Type": undefined },
     }),
-  conductors: () => api.get("/operator/conductors"),
-  createConductor: (data: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    password: string;
-  }) => api.post("/operator/conductors", data),
-  removeConductor: (conductorId: string) => api.delete(`/operator/conductors/${conductorId}`),
   dashboard: () => api.get("/operator/dashboard"),
   me: () => api.get("/operator/me"),
   routes: (page = 0) => api.get(`/operator/routes?page=${page}&size=20`),
@@ -138,4 +129,14 @@ export const operatorApi = {
   createTrip: (data: object) => api.post("/operator/trips", data),
   cancelTrip: (id: string) => api.patch(`/operator/trips/${id}/cancel`),
   manifest: (tripId: string) => api.get(`/operator/trips/${tripId}/manifest`),
+  // Staff management
+  staff: () => api.get("/operator/staff"),
+  createStaff: (data: object) => api.post("/operator/staff", data),
+  toggleStaff: (id: string, enabled: boolean) =>
+    api.patch(`/operator/staff/${id}/toggle?enabled=${enabled}`),
+  removeStaff: (id: string) => api.delete(`/operator/staff/${id}`),
+  // Backward-compat for conductors page
+  conductors: () => api.get("/operator/conductors"),
+  createConductor: (data: object) => api.post("/operator/staff", { ...data, role: "CONDUCTOR" }),
+  removeConductor: (id: string) => api.delete(`/operator/staff/${id}`),
 };

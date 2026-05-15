@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Route, Bus, Calendar, Users, TrendingUp, ArrowRight, Clock } from "lucide-react";
 import { operatorApi } from "@/lib/api";
-import { OperatorDashboardStats } from "@/lib/types";
+import { OperatorDashboardStats, UserRole } from "@/lib/types";
+import { getStoredUser } from "@/store/auth";
 
 function StatCard({ icon: Icon, label, value, color }: {
   icon: React.ElementType;
@@ -22,9 +23,17 @@ function StatCard({ icon: Icon, label, value, color }: {
   );
 }
 
+const ALL_QUICK_LINKS = [
+  { href: "/operator/trips",   icon: Calendar, label: "Schedule Trip",   desc: "Add a new trip",          roles: ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER"] },
+  { href: "/operator/routes",  icon: Route,    label: "Manage Routes",   desc: "Add or edit routes",       roles: ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN"] },
+  { href: "/operator/buses",   icon: Bus,      label: "Manage Fleet",    desc: "Add or edit buses",        roles: ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN"] },
+  { href: "/operator/team",    icon: Users,    label: "Team",            desc: "Manage staff accounts",    roles: ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN"] },
+];
+
 export default function OperatorDashboardPage() {
   const [stats, setStats] = useState<OperatorDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const role = getStoredUser()?.role as UserRole | undefined;
 
   useEffect(() => {
     operatorApi.dashboard()
@@ -32,12 +41,9 @@ export default function OperatorDashboardPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const quickLinks = [
-    { href: "/operator/trips", icon: Calendar, label: "Schedule Trip", desc: "Add a new trip" },
-    { href: "/operator/routes", icon: Route, label: "Manage Routes", desc: "Add or edit routes" },
-    { href: "/operator/buses", icon: Bus, label: "Manage Fleet", desc: "Add or edit buses" },
-    { href: "/operator/conductors", icon: Users, label: "Conductors", desc: "Manage your field staff" },
-  ];
+  const quickLinks = ALL_QUICK_LINKS.filter(
+    (l) => !role || l.roles.includes(role)
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -66,8 +72,8 @@ export default function OperatorDashboardPage() {
         </div>
       )}
 
-      {/* Revenue card */}
-      {stats && (
+      {/* Revenue card — visible to owners, admins, and accountants */}
+      {stats && (role === "OPERATOR_SUPER_ADMIN" || role === "OPERATOR_ADMIN" || role === "ACCOUNTANT") && (
         <div className="bg-gradient-to-r from-emerald-600 to-teal-500 text-white rounded-xl p-6 mb-8">
           <div className="flex items-center justify-between">
             <div>

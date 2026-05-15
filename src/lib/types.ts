@@ -1,12 +1,14 @@
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+export type UserRole = "TRAVELER" | "OPERATOR_SUPER_ADMIN" | "OPERATOR_ADMIN" | "DISPATCHER" | "CONDUCTOR" | "ACCOUNTANT" | "ADMIN";
+
 export interface AuthUser {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
-  role: "TRAVELER" | "OPERATOR_ADMIN" | "CONDUCTOR" | "ADMIN";
+  role: UserRole;
   mustResetPassword: boolean;
 }
 
@@ -18,8 +20,19 @@ export interface AuthResponse {
   lastName: string;
   email: string;
   phone: string;
-  role: "TRAVELER" | "OPERATOR_ADMIN" | "CONDUCTOR" | "ADMIN";
+  role: UserRole;
   mustResetPassword: boolean;
+}
+
+export interface StaffMember {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: "OPERATOR_ADMIN" | "DISPATCHER" | "CONDUCTOR" | "ACCOUNTANT";
+  enabled: boolean;
+  createdAt: string;
 }
 
 // ─── Search ──────────────────────────────────────────────────────────────────

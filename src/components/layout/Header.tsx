@@ -13,8 +13,11 @@ function getInitials(user: AuthUser) {
 }
 
 function avatarColor(role: string) {
-  if (role === "OPERATOR_ADMIN") return "bg-violet-600";
-  if (role === "ADMIN") return "bg-rose-600";
+  if (role === "OPERATOR_SUPER_ADMIN") return "bg-violet-700";
+  if (role === "OPERATOR_ADMIN")       return "bg-violet-500";
+  if (role === "DISPATCHER")           return "bg-blue-600";
+  if (role === "ACCOUNTANT")           return "bg-amber-600";
+  if (role === "ADMIN")                return "bg-rose-600";
   return "bg-emerald-600";
 }
 
@@ -53,16 +56,21 @@ export default function Header() {
     router.push("/");
   };
 
+  const isOperatorStaff = ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(user?.role ?? "");
+
   const dashboardLink =
-    user?.role === "OPERATOR_ADMIN" ? "/operator/dashboard"
-    : user?.role === "ADMIN" ? "/admin/dashboard"
-    : user?.role === "CONDUCTOR" ? "/conductor/dashboard"
+    user?.role === "ADMIN"    ? "/admin/dashboard"
+    : isOperatorStaff         ? "/operator/dashboard"
+    : user?.role === "CONDUCTOR" ? "/conductor/trips"
     : "/account/bookings";
 
   const dashboardLabel =
-    user?.role === "OPERATOR_ADMIN" ? "Operator Dashboard"
-    : user?.role === "ADMIN" ? "Admin Dashboard"
-    : user?.role === "CONDUCTOR" ? "Conductor Panel"
+    user?.role === "ADMIN"                ? "Admin Dashboard"
+    : user?.role === "OPERATOR_SUPER_ADMIN" ? "Owner Dashboard"
+    : user?.role === "OPERATOR_ADMIN"     ? "Operator Dashboard"
+    : user?.role === "DISPATCHER"         ? "Dispatcher Dashboard"
+    : user?.role === "ACCOUNTANT"         ? "Finance Dashboard"
+    : user?.role === "CONDUCTOR"          ? "Conductor Panel"
     : "My Bookings";
 
   return (
