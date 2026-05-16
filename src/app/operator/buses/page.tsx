@@ -45,7 +45,7 @@ function BusPanel({ editing, onClose, onSaved }: {
   onClose: () => void;
   onSaved: (bus: BusItem, isEdit: boolean) => void;
 }) {
-  const { register, handleSubmit, formState: { isSubmitting, errors } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { isSubmitting, errors, isValid } } = useForm<FormData>({ mode: "onChange",
     defaultValues: editing
       ? { plateNumber: editing.plateNumber, totalSeats: editing.totalSeats, busType: editing.busType }
       : { busType: "STANDARD" },
@@ -143,8 +143,8 @@ function BusPanel({ editing, onClose, onSaved }: {
           <button onClick={onClose} type="button" className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
           <button
             onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm"
+            disabled={isSubmitting || !isValid}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm"
           >
             {isSubmitting ? "Saving..." : editing ? "Save Changes" : "Add Bus"}
           </button>

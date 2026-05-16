@@ -40,9 +40,9 @@ function RoutePanel({
   const {
     register,
     handleSubmit,
-    formState: { isSubmitting, errors },
+    formState: { isSubmitting, errors, isValid },
     reset,
-  } = useForm<FormData>({
+  } = useForm<FormData>({ mode: "onChange",
     defaultValues: editing
       ? { origin: editing.origin, destination: editing.destination, distanceKm: editing.distanceKm, basePrice: editing.basePrice }
       : {},
@@ -147,8 +147,8 @@ function RoutePanel({
           <button onClick={onClose} type="button" className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
           <button
             onClick={handleSubmit(onSubmit)}
-            disabled={isSubmitting}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm"
+            disabled={isSubmitting || !isValid}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm"
           >
             {isSubmitting ? "Saving..." : editing ? "Save Changes" : "Create Route"}
           </button>

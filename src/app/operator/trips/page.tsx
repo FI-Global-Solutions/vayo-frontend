@@ -62,7 +62,7 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
   onClose: () => void;
   onCreated: (trip: TripItem) => void;
 }) {
-  const { register, handleSubmit, watch, control, formState: { isSubmitting, errors } } = useForm<FormData>();
+  const { register, handleSubmit, watch, control, formState: { isSubmitting, errors, isValid } } = useForm<FormData>({ mode: "onChange" });
   const selectedBusId = watch("busId");
   const departureValue = watch("departureTime");
   const selectedBus = buses.find((b) => b.id === selectedBusId);
@@ -222,8 +222,8 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
           {routes.length > 0 && buses.length > 0 && (
             <button
               onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2"
+              disabled={isSubmitting || !isValid}
+              className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2"
             >
               {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" />Scheduling...</> : "Schedule Trip"}
             </button>

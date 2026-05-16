@@ -27,9 +27,8 @@ export default function ChangePasswordPage() {
     register,
     handleSubmit,
     watch,
-    setError,
-    formState: { isSubmitting, errors },
-  } = useForm<FormData>({ mode: "onTouched" });
+    formState: { isSubmitting, errors, isValid },
+  } = useForm<FormData>({ mode: "onChange" });
 
   useEffect(() => {
     const user = getStoredUser();
@@ -38,10 +37,6 @@ export default function ChangePasswordPage() {
   }, [router]);
 
   const onSubmit = async (data: FormData) => {
-    if (data.newPassword !== data.confirmPassword) {
-      setError("confirmPassword", { message: "Passwords do not match" });
-      return;
-    }
     try {
       const res = await authApi.changePassword(data.currentPassword, data.newPassword);
       const d: AuthResponse = res.data.data;
@@ -134,6 +129,10 @@ export default function ChangePasswordPage() {
                   {...register("newPassword", {
                     required: "Required",
                     minLength: { value: 8, message: "Minimum 8 characters" },
+                    validate: {
+                      hasUppercase: (v) => /[A-Z]/.test(v) || "Must contain an uppercase letter",
+                      hasNumber: (v) => /[0-9]/.test(v) || "Must contain a number",
+                    },
                   })}
                   type={showNew ? "text" : "password"}
                   placeholder="Min. 8 characters"
@@ -154,7 +153,10 @@ export default function ChangePasswordPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
-                  {...register("confirmPassword", { required: "Required" })}
+                  {...register("confirmPassword", {
+                    required: "Required",
+                    validate: (v) => v === watch("newPassword") || "Passwords do not match",
+                  })}
                   type={showConfirm ? "text" : "password"}
                   placeholder="Repeat new password"
                   className={`w-full pl-9 pr-10 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all
@@ -172,27 +174,26 @@ export default function ChangePasswordPage() {
               )}
             </div>
 
-            {/* Password strength hint */}
+            {/* Password strength checklist */}
             {watch("newPassword") && (
-              <div className="flex gap-1.5 items-center">
-                {[8, 12, 16].map((len) => (
-                  <div key={len} className={`h-1 flex-1 rounded-full transition-colors
-                    ${(watch("newPassword")?.length ?? 0) >= len ? "bg-emerald-500" : "bg-slate-200"}`}
-                  />
+              <div className="space-y-1">
+                {[
+                  { label: "8+ characters", ok: (watch("newPassword")?.length ?? 0) >= 8 },
+                  { label: "Uppercase letter", ok: /[A-Z]/.test(watch("newPassword") ?? "") },
+                  { label: "Number", ok: /[0-9]/.test(watch("newPassword") ?? "") },
+                ].map(({ label, ok }) => (
+                  <div key={label} className="flex items-center gap-2 text-xs">
+                    <div className={`w-3 h-3 rounded-full flex-shrink-0 ${ok ? "bg-emerald-500" : "bg-slate-200"}`} />
+                    <span className={ok ? "text-emerald-600" : "text-slate-400"}>{label}</span>
+                  </div>
                 ))}
-                <span className="text-xs text-slate-400 ml-1">
-                  {(watch("newPassword")?.length ?? 0) < 8 ? "Too short"
-                    : (watch("newPassword")?.length ?? 0) < 12 ? "Fair"
-                    : (watch("newPassword")?.length ?? 0) < 16 ? "Good"
-                    : "Strong"}
-                </span>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl transition-colors mt-2 text-sm"
+              disabled={isSubmitting || !isValid}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-colors mt-2 text-sm"
             >
               {isSubmitting ? "Saving..." : "Save New Password"}
             </button>

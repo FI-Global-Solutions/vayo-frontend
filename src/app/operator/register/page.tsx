@@ -212,12 +212,17 @@ function StepIndicator({ current }: { current: Step }) {
 
 // ─── Field wrapper ────────────────────────────────────────────────────────────
 
-function Field({ label, error, children, hint }: {
-  label: string; error?: string; children: React.ReactNode; hint?: string;
+function Field({ label, error, children, hint, optional }: {
+  label: string; error?: string; children: React.ReactNode; hint?: string; optional?: boolean;
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold text-slate-600 mb-1.5">{label}</label>
+      <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+        {label}
+        {optional
+          ? <span className="text-slate-400 font-normal ml-1">(optional)</span>
+          : <span className="text-red-500">*</span>}
+      </label>
       {children}
       {hint && !error && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -238,8 +243,8 @@ export default function OperatorRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [registeredCompany, setRegisteredCompany] = useState("");
 
-  const companyForm = useForm<CompanyForm>({ mode: "onTouched" });
-  const adminForm = useForm<AdminForm>({ mode: "onTouched" });
+  const companyForm = useForm<CompanyForm>({ mode: "onChange" });
+  const adminForm = useForm<AdminForm>({ mode: "onChange" });
 
   const onCompanySubmit = (data: CompanyForm) => {
     setCompanyData(data);
@@ -412,7 +417,7 @@ export default function OperatorRegisterPage() {
                   </div>
                 </Field>
               </div>
-              <Field label="Description" hint="Optional — tell passengers about your company">
+              <Field label="Description" hint="Tell passengers about your company" optional>
                 <div className="relative">
                   <FileText className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <textarea
@@ -423,7 +428,7 @@ export default function OperatorRegisterPage() {
                   />
                 </div>
               </Field>
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2">
+              <button type="submit" disabled={!companyForm.formState.isValid} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors mt-2">
                 Continue <ChevronRight className="h-4 w-4" />
               </button>
             </form>
@@ -527,7 +532,7 @@ export default function OperatorRegisterPage() {
                 <button type="button" onClick={() => setStep("company")} className="flex items-center gap-1.5 px-4 py-3.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all">
                   <ArrowLeft className="h-4 w-4" />Back
                 </button>
-                <button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+                <button type="submit" disabled={!adminForm.formState.isValid} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
                   Continue <ChevronRight className="h-4 w-4" />
                 </button>
               </div>

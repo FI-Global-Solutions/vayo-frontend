@@ -40,7 +40,7 @@ function CheckoutPage() {
   const SERVICE_FEE = 300;
   const total = amount + SERVICE_FEE;
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, formState: { errors, isSubmitting, isValid } } = useForm<FormData>({ mode: "onChange",
     resolver: zodResolver(schema),
     defaultValues: {
       passengerName: user ? `${user.firstName} ${user.lastName}` : "",
@@ -175,7 +175,10 @@ function CheckoutPage() {
           <h2 className="font-bold text-slate-800">Passenger Details</h2>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Full Name *</label>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Full Name
+              <span className="text-red-500 ml-0.5">*</span>
+            </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input {...register("passengerName")} placeholder="John Doe"
@@ -185,7 +188,10 @@ function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone Number *</label>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Phone Number
+              <span className="text-red-500 ml-0.5">*</span>
+            </label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input {...register("passengerPhone")} placeholder="+250788000000"
@@ -195,8 +201,9 @@ function CheckoutPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-              Email <span className="text-slate-400 font-normal">(optional — for e-ticket)</span>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Email
+              <span className="text-slate-400 font-normal ml-1">(optional)</span>
             </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -211,8 +218,8 @@ function CheckoutPage() {
             <p className="text-xs text-slate-500">Pay securely with <span className="font-medium text-slate-700">Card</span> or <span className="font-medium text-slate-700">Mobile Money (MTN/Airtel)</span> via Flutterwave</p>
           </div>
 
-          <button type="submit" disabled={isSubmitting}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2 flex items-center justify-center gap-2">
+          <button type="submit" disabled={isSubmitting || !isValid}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl mt-2 flex items-center justify-center gap-2">
             {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</> : `Pay ${total.toLocaleString()} RWF →`}
           </button>
         </form>

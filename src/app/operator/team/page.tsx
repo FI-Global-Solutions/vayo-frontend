@@ -62,7 +62,8 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
 
   const availableRoles = isSuperAdmin ? ALL_ROLES : BASE_ROLES;
 
-  const { register, handleSubmit, setValue, formState: { isSubmitting, errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, formState: { isSubmitting, errors, isValid } } = useForm<FormData>({
+    mode: "onChange",
     defaultValues: { role: "CONDUCTOR" },
   });
 
@@ -144,7 +145,10 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">First Name *</label>
+              <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                First Name
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                 <input {...register("firstName", { required: true })} placeholder="Jean"
@@ -152,14 +156,20 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Last Name *</label>
+              <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                Last Name
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
               <input {...register("lastName", { required: true })} placeholder="Habimana"
                 className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email *</label>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Email
+              <span className="text-red-500 ml-0.5">*</span>
+            </label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input {...register("email", { required: true, pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Invalid email" } })}
@@ -170,7 +180,10 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone *</label>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Phone
+              <span className="text-red-500 ml-0.5">*</span>
+            </label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input {...register("phone", { required: true })} placeholder="+250788000000"
@@ -179,7 +192,10 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Temporary Password *</label>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Temporary Password
+              <span className="text-red-500 ml-0.5">*</span>
+            </label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input {...register("password", { required: true, minLength: { value: 8, message: "Min. 8 characters" } })}
@@ -200,8 +216,8 @@ function AddStaffPanel({ onClose, onCreated, isSuperAdmin }: { onClose: () => vo
             className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">
             Cancel
           </button>
-          <button type="button" disabled={isSubmitting} onClick={handleSubmit(onSubmit)}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl text-sm">
+          <button type="button" disabled={isSubmitting || !isValid} onClick={handleSubmit(onSubmit)}
+            className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm">
             {isSubmitting ? "Creating..." : "Create Account"}
           </button>
         </div>
@@ -227,11 +243,11 @@ function ConfirmRemoveDialog({ staff, onConfirm, onCancel }: {
           access immediately. This cannot be undone.
         </p>
         <div className="flex gap-3">
-          <button onClick={onCancel}
+          <button type="button" onClick={onCancel}
             className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">
             Cancel
           </button>
-          <button onClick={onConfirm}
+          <button type="button" onClick={onConfirm}
             className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm">
             Remove
           </button>
@@ -312,7 +328,7 @@ export default function TeamPage() {
           <h1 className="text-2xl font-bold text-slate-900">Team</h1>
           <p className="text-slate-500 text-sm mt-1">Manage staff accounts and their access levels</p>
         </div>
-        <button onClick={() => setShowAdd(true)}
+        <button type="button" onClick={() => setShowAdd(true)}
           className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm">
           <UserPlus className="h-4 w-4" />
           Add Staff
@@ -322,7 +338,7 @@ export default function TeamPage() {
       {/* Role filter tabs */}
       <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
         {(["ALL", ...visibleRoles] as const).map((r) => (
-          <button key={r} onClick={() => setFilterRole(r as StaffRole | "ALL")}
+          <button type="button" key={r} onClick={() => setFilterRole(r as StaffRole | "ALL")}
             className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               filterRole === r
                 ? "bg-emerald-600 text-white"
@@ -341,7 +357,7 @@ export default function TeamPage() {
           </div>
           <h3 className="font-semibold text-slate-700 mb-1">No staff members yet</h3>
           <p className="text-sm text-slate-400 mb-6">Add dispatchers, conductors, and accountants to delegate work.</p>
-          <button onClick={() => setShowAdd(true)}
+          <button type="button" onClick={() => setShowAdd(true)}
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm">
             <UserPlus className="h-4 w-4" />
             Add First Staff Member

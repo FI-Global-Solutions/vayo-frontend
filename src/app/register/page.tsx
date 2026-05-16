@@ -18,10 +18,9 @@ type FormData = {
   password: string;
 };
 
-// Validates the 9-digit local part: must start with 79, 78, or 73
 function validateRwandaPhone(value: string) {
   if (!/^\d{9}$/.test(value)) return "Enter 9 digits (e.g. 788000000)";
-  if (!/^(79|78|73)/.test(value)) return "Number must start with 79, 78, or 73";
+  if (!/^(79|78|73|72)/.test(value)) return "Must start with 78, 79, 73, or 72";
   return true;
 }
 
@@ -38,9 +37,10 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
+    watch,
     getValues,
-    formState: { isSubmitting, errors },
-  } = useForm<FormData>({ mode: "onTouched" });
+    formState: { isSubmitting, errors, isValid },
+  } = useForm<FormData>({ mode: "onChange" });
 
   const onSubmit = async (data: FormData) => {
     // Combine prefix with local digits
@@ -209,7 +209,10 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">First Name</label>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  First Name
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                   <input
@@ -221,7 +224,10 @@ export default function RegisterPage() {
                 {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName.message}</p>}
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Last Name</label>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  Last Name
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
                 <input
                   {...register("lastName", { required: "Required" })}
                   placeholder="Doe"
@@ -232,12 +238,14 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Email</label>
+              <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                Email
+                <span className="text-slate-400 font-normal ml-1">(optional)</span>
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   {...register("email", {
-                    required: "Email is required",
                     pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Invalid email address" },
                   })}
                   type="email"
@@ -249,7 +257,10 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Phone number</label>
+              <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                Phone number
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
               <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${errors.phone ? "border-red-400" : "border-slate-200"}`}>
                 {/* Rwanda flag + prefix */}
                 <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 shrink-0">
@@ -279,13 +290,20 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
+              <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                Password
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
               <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${errors.password ? "border-red-400" : "border-slate-200"}`}>
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   {...register("password", {
                     required: "Password is required",
                     minLength: { value: 8, message: "Must be at least 8 characters" },
+                    validate: {
+                      hasUppercase: (v) => /[A-Z]/.test(v) || "Must contain an uppercase letter",
+                      hasNumber: (v) => /[0-9]/.test(v) || "Must contain a number",
+                    },
                   })}
                   type={showPass ? "text" : "password"}
                   placeholder="Min. 8 characters"
@@ -300,12 +318,27 @@ export default function RegisterPage() {
                 </button>
               </div>
               {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+              {/* Password strength checklist */}
+              {watch("password") && (
+                <div className="mt-2 space-y-1">
+                  {[
+                    { label: "8+ characters", ok: (watch("password")?.length ?? 0) >= 8 },
+                    { label: "Uppercase letter", ok: /[A-Z]/.test(watch("password") ?? "") },
+                    { label: "Number", ok: /[0-9]/.test(watch("password") ?? "") },
+                  ].map(({ label, ok }) => (
+                    <div key={label} className="flex items-center gap-2 text-xs">
+                      <div className={`w-3 h-3 rounded-full flex-shrink-0 ${ok ? "bg-emerald-500" : "bg-slate-200"}`} />
+                      <span className={ok ? "text-emerald-600" : "text-slate-400"}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2"
+              disabled={isSubmitting || !isValid}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl mt-2"
             >
               {isSubmitting ? "Sending OTP..." : "Send Verification Code"}
             </button>

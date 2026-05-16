@@ -11,7 +11,7 @@ type FormData = { email: string };
 
 export default function ForgotPasswordPage() {
   const [sent, setSent] = useState(false);
-  const { register, handleSubmit, getValues, formState: { isSubmitting } } = useForm<FormData>();
+  const { register, handleSubmit, getValues, formState: { isSubmitting, isValid } } = useForm<FormData>({ mode: "onChange" });
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !isValid}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl"
                 >
                   {isSubmitting ? "Sending..." : "Send reset link"}

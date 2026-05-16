@@ -3,50 +3,50 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Phone, ArrowLeft } from "lucide-react";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { saveAuth } from "@/store/auth";
 import { AuthResponse } from "@/lib/types";
 
-type FormData = { identifier: string; password: string };
+type LoginMethod = "phone" | "email";
 type Step = "form" | "otp";
+type PhoneFormData = { phone: string; password: string };
+type EmailFormData = { email: string; password: string };
 
-// Returns true if the raw input looks like a phone (all digits, no @)
-function isPhoneInput(value: string) {
-  return /^\d+$/.test(value.trim());
+// Valid Rwandan mobile prefixes (9 digits after +250)
+// MTN: 78x, 79x  |  Airtel: 73x  |  new allocations covered by 72x
+const RW_PHONE_RE = /^(078|079|073|072)\d{6}$|^(78|79|73|72)\d{7}$/;
+
+function validateRwandaPhone(value: string) {
+  if (!value) return "Phone number is required";
+  const digits = value.replace(/\D/g, "");
+  // Accept with or without leading 0 (user types without country code)
+  if (digits.length !== 9) return "Enter 9 digits (e.g. 788 000 000)";
+  if (!/^(78|79|73|72)/.test(digits)) return "Must be an MTN (078, 079) or Airtel (073) Rwanda number";
+  return true;
 }
 
-function validateIdentifier(value: string) {
-  if (!value) return "Email or phone number is required";
-  const trimmed = value.trim();
-  if (isPhoneInput(trimmed)) {
-    if (!/^\d{9}$/.test(trimmed)) return "Enter 9 digits (e.g. 788000000)";
-    if (!/^(79|78|73)/.test(trimmed)) return "Number must start with 79, 78, or 73";
-  }
+function validateEmail(value: string) {
+  if (!value) return "Email is required";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return "Enter a valid email address";
   return true;
 }
 
 export default function LoginPage() {
+  const [method, setMethod] = useState<LoginMethod>("phone");
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState<Step>("form");
   const [pendingPhone, setPendingPhone] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
-  const [identifierValue, setIdentifierValue] = useState("");
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
-  const {
-    register,
-    handleSubmit,
-    getValues,
-    setValue,
-    formState: { isSubmitting, errors },
-  } = useForm<FormData>({ mode: "onTouched" });
 
-  const phoneMode = isPhoneInput(identifierValue);
+  const phoneForm = useForm<PhoneFormData>({ mode: "onChange" });
+  const emailForm = useForm<EmailFormData>({ mode: "onChange" });
 
   const finishLogin = (d: AuthResponse) => {
     saveAuth(d.accessToken, {
@@ -66,9 +66,8 @@ export default function LoginPage() {
     else router.push("/");
   };
 
-  const onSubmit = async (data: FormData) => {
-    // If phone mode, prepend +250 before sending
-    const identifier = phoneMode ? "+250" + data.identifier.trim() : data.identifier.trim();
+  const onPhoneSubmit = async (data: PhoneFormData) => {
+    const identifier = "+250" + data.phone.replace(/\D/g, "");
     try {
       const res = await authApi.login(identifier, data.password);
       if (res.status === 202) {
@@ -81,8 +80,26 @@ export default function LoginPage() {
         finishLogin(res.data.data as AuthResponse);
       }
     } catch (e: unknown) {
-      const axiosErr = e as { response?: { data?: { message?: string } } };
-      toast.error(axiosErr?.response?.data?.message ?? "Invalid credentials. Please try again.");
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message ?? "Invalid credentials. Please try again.");
+    }
+  };
+
+  const onEmailSubmit = async (data: EmailFormData) => {
+    try {
+      const res = await authApi.login(data.email.trim().toLowerCase(), data.password);
+      if (res.status === 202) {
+        setPendingPhone(res.data.data.phone);
+        setMaskedPhone(res.data.data.maskedPhone);
+        setOtp(["", "", "", "", "", ""]);
+        setStep("otp");
+        toast.info("Verification code sent to your phone");
+      } else {
+        finishLogin(res.data.data as AuthResponse);
+      }
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message ?? "Invalid credentials. Please try again.");
     }
   };
 
@@ -117,8 +134,8 @@ export default function LoginPage() {
       const res = await authApi.verifyLoginOtp(pendingPhone, code);
       finishLogin(res.data.data as AuthResponse);
     } catch (e: unknown) {
-      const axiosErr = e as { response?: { data?: { message?: string } } };
-      toast.error(axiosErr?.response?.data?.message ?? "Invalid or expired OTP");
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message ?? "Invalid or expired OTP");
       setOtp(["", "", "", "", "", ""]);
       otpRefs.current[0]?.focus();
     } finally {
@@ -128,16 +145,24 @@ export default function LoginPage() {
 
   const handleResend = async () => {
     try {
-      const { identifier, password } = getValues();
-      const resolvedIdentifier = isPhoneInput(identifier) ? "+250" + identifier.trim() : identifier.trim();
-      const res = await authApi.login(resolvedIdentifier, password);
-      if (res.status === 202) toast.success("New code sent");
+      let identifier: string;
+      if (method === "phone") {
+        const phone = phoneForm.getValues("phone").replace(/\D/g, "");
+        const password = phoneForm.getValues("password");
+        identifier = "+250" + phone;
+        await authApi.login(identifier, password);
+      } else {
+        const email = emailForm.getValues("email").trim().toLowerCase();
+        const password = emailForm.getValues("password");
+        await authApi.login(email, password);
+      }
+      toast.success("New code sent");
     } catch {
       toast.error("Could not resend code");
     }
   };
 
-  // ── OTP screen ──────────────────────────────────────────────────────────────
+  // ── OTP screen ───────────────────────────────────────────────────────────────
   if (step === "otp") {
     return (
       <div className="min-h-[80vh] flex items-center justify-center px-4">
@@ -199,7 +224,7 @@ export default function LoginPage() {
     );
   }
 
-  // ── Login form ──────────────────────────────────────────────────────────────
+  // ── Login form ───────────────────────────────────────────────────────────────
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -210,100 +235,167 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Email or phone number
-              </label>
-              {phoneMode ? (
-                /* Phone mode: show Rwanda prefix */
-                <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${errors.identifier ? "border-red-400" : "border-slate-200"}`}>
+          {/* Method tabs */}
+          <div className="flex bg-slate-100 rounded-xl p-1 mb-5">
+            <button
+              type="button"
+              onClick={() => setMethod("phone")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                method === "phone"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Phone className="h-3.5 w-3.5" />
+              Use phone number
+            </button>
+            <button
+              type="button"
+              onClick={() => setMethod("email")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-all ${
+                method === "email"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Use email
+            </button>
+          </div>
+
+          {/* ── Phone form ── */}
+          {method === "phone" && (
+            <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} noValidate className="space-y-4">
+              <div>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  Phone number
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${phoneForm.formState.errors.phone ? "border-red-400" : "border-slate-200"}`}>
                   <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 shrink-0">
                     <span className="text-base leading-none">🇷🇼</span>
                     <span className="text-sm font-medium text-slate-600">+250</span>
                   </div>
                   <input
-                    {...register("identifier", { validate: validateIdentifier })}
+                    {...phoneForm.register("phone", { validate: validateRwandaPhone })}
                     type="tel"
                     inputMode="numeric"
-                    placeholder="788000000"
+                    placeholder="788 000 000"
                     maxLength={9}
-                    autoComplete="username"
+                    autoComplete="tel-national"
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
-                      setValue("identifier", val);
-                      setIdentifierValue(val);
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+                      phoneForm.setValue("phone", val, { shouldValidate: phoneForm.formState.isSubmitted });
                     }}
                     onKeyDown={(e) => {
-                      if (!/^\d$/.test(e.key) && !["Backspace","Delete","ArrowLeft","ArrowRight","Tab"].includes(e.key)) {
+                      if (!/^\d$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
                         e.preventDefault();
                       }
                     }}
                     className="flex-1 px-3 py-3 text-sm bg-white focus:outline-none"
                   />
                 </div>
-              ) : (
-                /* Email / free-text mode */
-                <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${errors.identifier ? "border-red-400" : "border-slate-200"}`}>
+                {phoneForm.formState.errors.phone ? (
+                  <p className="text-red-500 text-xs mt-1">{phoneForm.formState.errors.phone.message}</p>
+                ) : (
+                  <p className="text-xs text-slate-400 mt-1">MTN (078, 079) or Airtel (073) Rwanda</p>
+                )}
+              </div>
+
+              <div>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  Password
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${phoneForm.formState.errors.password ? "border-red-400" : "border-slate-200"}`}>
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    {...phoneForm.register("password", { required: "Password is required" })}
+                    type={showPass ? "text" : "password"}
+                    placeholder="Your password"
+                    className="w-full pl-9 pr-10 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
+                  />
+                  <button type="button" onClick={() => setShowPass((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {phoneForm.formState.errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{phoneForm.formState.errors.password.message}</p>
+                )}
+              </div>
+
+              <div className="flex justify-end -mt-1">
+                <Link href="/forgot-password" className="text-xs text-emerald-600 hover:underline font-medium">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <button type="submit" disabled={phoneForm.formState.isSubmitting || !phoneForm.formState.isValid}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl">
+                {phoneForm.formState.isSubmitting ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+          )}
+
+          {/* ── Email form ── */}
+          {method === "email" && (
+            <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} noValidate className="space-y-4">
+              <div>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  Email address
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${emailForm.formState.errors.email ? "border-red-400" : "border-slate-200"}`}>
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
-                    {...register("identifier", { validate: validateIdentifier })}
-                    type="text"
-                    placeholder="you@email.com or 788000000"
-                    autoComplete="username"
-                    onChange={(e) => {
-                      setValue("identifier", e.target.value);
-                      setIdentifierValue(e.target.value);
-                    }}
+                    {...emailForm.register("email", { validate: validateEmail })}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
                     className="w-full pl-9 pr-4 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
                   />
                 </div>
-              )}
-              {errors.identifier && (
-                <p className="text-red-500 text-xs mt-1">{errors.identifier.message}</p>
-              )}
-              {phoneMode && !errors.identifier && (
-                <p className="text-xs text-slate-400 mt-1">MTN or Airtel Rwanda (78, 79, 73)</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Password</label>
-              <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${errors.password ? "border-red-400" : "border-slate-200"}`}>
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <input
-                  {...register("password", { required: "Password is required" })}
-                  type={showPass ? "text" : "password"}
-                  placeholder="Your password"
-                  className="w-full pl-9 pr-10 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((s) => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                {emailForm.formState.errors.email && (
+                  <p className="text-red-500 text-xs mt-1">{emailForm.formState.errors.email.message}</p>
+                )}
               </div>
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
-              )}
-            </div>
 
-            <div className="flex justify-end -mt-1">
-              <Link href="/forgot-password" className="text-xs text-emerald-600 hover:underline font-medium">
-                Forgot password?
-              </Link>
-            </div>
+              <div>
+                <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+                  Password
+                  <span className="text-red-500 ml-0.5">*</span>
+                </label>
+                <div className={`relative border rounded-xl focus-within:ring-2 focus-within:ring-emerald-500 ${emailForm.formState.errors.password ? "border-red-400" : "border-slate-200"}`}>
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    {...emailForm.register("password", { required: "Password is required" })}
+                    type={showPass ? "text" : "password"}
+                    placeholder="Your password"
+                    className="w-full pl-9 pr-10 py-3 text-sm bg-transparent focus:outline-none rounded-xl"
+                  />
+                  <button type="button" onClick={() => setShowPass((s) => !s)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {emailForm.formState.errors.password && (
+                  <p className="text-red-500 text-xs mt-1">{emailForm.formState.errors.password.message}</p>
+                )}
+              </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2"
-            >
-              {isSubmitting ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
+              <div className="flex justify-end -mt-1">
+                <Link href="/forgot-password" className="text-xs text-emerald-600 hover:underline font-medium">
+                  Forgot password?
+                </Link>
+              </div>
+
+              <button type="submit" disabled={emailForm.formState.isSubmitting || !emailForm.formState.isValid}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl">
+                {emailForm.formState.isSubmitting ? "Signing in..." : "Sign In"}
+              </button>
+            </form>
+          )}
 
           <p className="text-center text-sm text-slate-500 mt-5">
             Don&apos;t have an account?{" "}

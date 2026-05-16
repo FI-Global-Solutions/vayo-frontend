@@ -17,7 +17,7 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
-  const { register, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<FormData>();
+  const { register, handleSubmit, watch, formState: { errors, isSubmitting, isValid } } = useForm<FormData>({ mode: "onChange" });
   const newPassword = watch("newPassword");
 
   if (!token) {
@@ -68,7 +68,14 @@ function ResetPasswordForm() {
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
-              {...register("newPassword", { required: true, minLength: 8 })}
+              {...register("newPassword", {
+                required: true,
+                minLength: 8,
+                validate: {
+                  hasUppercase: (v) => /[A-Z]/.test(v) || "Must contain an uppercase letter",
+                  hasNumber: (v) => /[0-9]/.test(v) || "Must contain a number",
+                },
+              })}
               type={showPass ? "text" : "password"}
               placeholder="Min. 8 characters"
               className="w-full pl-9 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -81,9 +88,6 @@ function ResetPasswordForm() {
               {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.newPassword?.type === "minLength" && (
-            <p className="text-red-500 text-xs mt-1">At least 8 characters required</p>
-          )}
         </div>
 
         <div>
@@ -123,8 +127,8 @@ function ResetPasswordForm() {
 
         <button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-semibold py-3.5 rounded-xl mt-2"
+          disabled={isSubmitting || !isValid}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl mt-2"
         >
           {isSubmitting ? "Updating..." : "Set new password"}
         </button>
