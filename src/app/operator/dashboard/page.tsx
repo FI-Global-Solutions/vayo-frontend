@@ -34,19 +34,22 @@ export default function OperatorDashboardPage() {
   const [stats, setStats] = useState<OperatorDashboardStats | null>(null);
   const [balance, setBalance] = useState<PayoutBalance | null | "error">(null);
   const [loading, setLoading] = useState(true);
-  const role = getStoredUser()?.role as UserRole | undefined;
+  const [role, setRole] = useState<UserRole | undefined>(undefined);
 
   useEffect(() => {
+    const storedRole = getStoredUser()?.role as UserRole | undefined;
+    setRole(storedRole);
+
     operatorApi.dashboard()
       .then((r) => setStats(r.data.data))
       .finally(() => setLoading(false));
-    // Fetch balance in parallel; graceful degradation on failure
-    if (role === "OPERATOR_SUPER_ADMIN" || role === "OPERATOR_ADMIN" || role === "ACCOUNTANT") {
+
+    if (storedRole === "OPERATOR_SUPER_ADMIN" || storedRole === "OPERATOR_ADMIN" || storedRole === "ACCOUNTANT") {
       payoutApi.getBalance()
         .then((r) => setBalance(r.data.data))
         .catch(() => setBalance("error"));
     }
-  }, [role]);
+  }, []);
 
   const quickLinks = ALL_QUICK_LINKS.filter(
     (l) => !role || l.roles.includes(role)

@@ -22,8 +22,12 @@ const TABS: { key: FilterTab; label: string }[] = [
   { key: "ALL",               label: "All" },
 ];
 
-function fmtDate(iso: string) {
-  return format(new Date(iso), "dd MMM yyyy, HH:mm");
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  // LocalDateTime from backend has no timezone suffix — treat as UTC by appending Z
+  const normalized = iso.includes("Z") || iso.includes("+") ? iso : iso + "Z";
+  const d = new Date(normalized);
+  return isNaN(d.getTime()) ? "—" : format(d, "dd MMM yyyy, HH:mm");
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -252,6 +256,12 @@ function RefundCard({
 
       {/* Refund detail */}
       <div className="bg-slate-50 rounded-xl px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        {item.totalAmountPaid != null && (
+          <div>
+            <p className="text-slate-400 uppercase tracking-wide">Amount Paid</p>
+            <p className="font-semibold text-slate-700 mt-0.5">{item.totalAmountPaid.toLocaleString()} RWF</p>
+          </div>
+        )}
         {item.hoursBeforeDeparture != null && (
           <div>
             <p className="text-slate-400 uppercase tracking-wide">Cancelled</p>
@@ -266,12 +276,15 @@ function RefundCard({
         )}
         <div>
           <p className="text-slate-400 uppercase tracking-wide">Refund amount</p>
-          <p className="font-semibold text-slate-700 mt-0.5">
+          <p className="font-semibold text-emerald-700 mt-0.5">
             {item.refundAmountRwf.toLocaleString()} RWF
             {item.appliedPctUsed != null && (
               <span className="text-slate-400 font-normal"> ({item.appliedPctUsed}%)</span>
             )}
           </p>
+          {item.serviceFeeAmount != null && item.serviceFeeAmount > 0 && (
+            <p className="text-slate-400 mt-0.5">Service fee {item.serviceFeeAmount.toLocaleString()} RWF retained</p>
+          )}
         </div>
       </div>
 

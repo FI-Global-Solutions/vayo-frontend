@@ -269,6 +269,8 @@ export interface OperatorRefundItem {
   cancelledAt?: string;
   hoursBeforeDeparture?: number;
   refundAmountRwf: number;
+  totalAmountPaid?: number;
+  serviceFeeAmount?: number;
   appliedPolicyTier?: string;
   appliedPctUsed?: number;
   status: RefundStatus;

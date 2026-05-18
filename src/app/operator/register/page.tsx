@@ -286,6 +286,7 @@ export default function OperatorRegisterPage() {
           adminEmail: adminData.adminEmail,
           adminPhone: adminData.adminPhone,
           adminPassword: adminData.adminPassword,
+          termsVersionId: operatorTerms.id,
         })],
         { type: "application/json" }
       )
@@ -294,13 +295,6 @@ export default function OperatorRegisterPage() {
     certFiles.forEach((f) => formData.append("certificates", f));
 
     setSubmitting(true);
-    try {
-      await termsApi.acceptTerms(operatorTerms.id);
-    } catch {
-      toast.error("Failed to record agreement acceptance. Please try again.");
-      setSubmitting(false);
-      return;
-    }
     try {
       await operatorApi.register(formData);
       setRegisteredCompany(companyData.companyName);
