@@ -67,7 +67,13 @@ export const searchApi = {
 
 export const tripApi = {
   detail: (tripId: string) => api.get(`/trips/${tripId}`),
-  seats: (tripId: string) => api.get(`/trips/${tripId}/seats`),
+  seats: (tripId: string, originStopId?: string, destinationStopId?: string) => {
+    const params = new URLSearchParams();
+    if (originStopId) params.set("originStopId", originStopId);
+    if (destinationStopId) params.set("destinationStopId", destinationStopId);
+    const qs = params.toString();
+    return api.get(`/trips/${tripId}/seats${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // ─── Bookings ────────────────────────────────────────────────────────────────
@@ -108,6 +114,35 @@ export const adminApi = {
     api.get(`/admin/operators/${operatorId}/documents`),
 };
 
+// ─── Refund Policy ────────────────────────────────────────────────────────────
+
+export const refundApi = {
+  getTripRefundPolicy: (tripId: string) =>
+    api.get(`/trips/${tripId}/refund-policy`),
+  acknowledgeRefundPolicy: (bookingReference: string) =>
+    api.post(`/bookings/${bookingReference}/acknowledge-refund-policy`),
+};
+
+// ─── Terms ────────────────────────────────────────────────────────────────────
+
+export const termsApi = {
+  getCurrentPassengerTerms: () => api.get("/terms/passenger/current"),
+  getCurrentOperatorTerms: () => api.get("/terms/operator/current"),
+  acceptTerms: (termsVersionId: string) =>
+    api.post("/terms/accept", { termsVersionId }),
+};
+
+// ─── Payouts ─────────────────────────────────────────────────────────────────
+
+export const payoutApi = {
+  getBalance: () => api.get("/operator/payouts/balance"),
+  requestPayout: () => api.post("/operator/payouts/request"),
+  getPayouts: (page = 0) => api.get(`/operator/payouts?page=${page}&size=20`),
+  getPayout: (reference: string) => api.get(`/operator/payouts/${reference}`),
+  getPayoutAccount: () => api.get("/operator/payout-account"),
+  updatePayoutAccount: (data: object) => api.put("/operator/payout-account", data),
+};
+
 // ─── Operator ─────────────────────────────────────────────────────────────────
 
 export const operatorApi = {
@@ -128,6 +163,9 @@ export const operatorApi = {
   trips: (page = 0) => api.get(`/operator/trips?page=${page}&size=20`),
   createTrip: (data: object) => api.post("/operator/trips", data),
   cancelTrip: (id: string) => api.patch(`/operator/trips/${id}/cancel`),
+  startBoarding: (id: string) => api.patch(`/operator/trips/${id}/start-boarding`),
+  departTrip: (id: string) => api.patch(`/operator/trips/${id}/depart`),
+  arriveTrip: (id: string) => api.patch(`/operator/trips/${id}/arrive`),
   manifest: (tripId: string) => api.get(`/operator/trips/${tripId}/manifest`),
   // Staff management
   staff: () => api.get("/operator/staff"),
@@ -135,6 +173,16 @@ export const operatorApi = {
   toggleStaff: (id: string, enabled: boolean) =>
     api.patch(`/operator/staff/${id}/toggle?enabled=${enabled}`),
   removeStaff: (id: string) => api.delete(`/operator/staff/${id}`),
+  // Refund management
+  getRefunds: (status?: string, page = 0) => {
+    const params = new URLSearchParams({ page: String(page), size: "20" });
+    if (status) params.set("status", status);
+    return api.get(`/operator/refunds?${params.toString()}`);
+  },
+  getRefund: (refundId: string) => api.get(`/operator/refunds/${refundId}`),
+  approveRefund: (refundId: string) => api.post(`/operator/refunds/${refundId}/approve`),
+  rejectRefund: (refundId: string, rejectionReason: string) =>
+    api.post(`/operator/refunds/${refundId}/reject`, { rejectionReason }),
   // Backward-compat for conductors page
   conductors: () => api.get("/operator/conductors"),
   createConductor: (data: object) => api.post("/operator/staff", { ...data, role: "CONDUCTOR" }),

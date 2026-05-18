@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import {
@@ -8,7 +8,7 @@ import {
   Upload, X, Info, IdCard, Award, FileCheck,
 } from "lucide-react";
 import { toast } from "sonner";
-import { operatorApi } from "@/lib/api";
+import { operatorApi, termsApi } from "@/lib/api";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -242,9 +242,17 @@ export default function OperatorRegisterPage() {
   const [certFiles, setCertFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [registeredCompany, setRegisteredCompany] = useState("");
+  const [operatorTerms, setOperatorTerms] = useState<{ id: string; versionLabel: string; documentUrl: string } | null>(null);
+  const [termsChecked, setTermsChecked] = useState(false);
 
   const companyForm = useForm<CompanyForm>({ mode: "onChange" });
   const adminForm = useForm<AdminForm>({ mode: "onChange" });
+
+  useEffect(() => {
+    termsApi.getCurrentOperatorTerms()
+      .then((res) => setOperatorTerms(res.data.data ?? res.data))
+      .catch(() => { /* non-fatal — checkbox will still block submit */ });
+  }, []);
 
   const onCompanySubmit = (data: CompanyForm) => {
     setCompanyData(data);
@@ -262,6 +270,7 @@ export default function OperatorRegisterPage() {
 
   const onDocumentsSubmit = async () => {
     if (!companyData || !adminData) return;
+    if (!termsChecked || !operatorTerms) return;
 
     const formData = new FormData();
     formData.append(
@@ -277,6 +286,7 @@ export default function OperatorRegisterPage() {
           adminEmail: adminData.adminEmail,
           adminPhone: adminData.adminPhone,
           adminPassword: adminData.adminPassword,
+          termsVersionId: operatorTerms.id,
         })],
         { type: "application/json" }
       )
@@ -538,10 +548,7 @@ export default function OperatorRegisterPage() {
               </div>
             </form>
             <p className="text-center text-xs text-slate-400 mt-4">
-              By registering you agree to VAYO&apos;s{" "}
-              <span className="text-emerald-600 cursor-pointer hover:underline">operator terms</span>
-              {" "}and{" "}
-              <span className="text-emerald-600 cursor-pointer hover:underline">commission policy</span>.
+              You will review and accept the Operator Agreement on the final step.
             </p>
           </div>
         )}
@@ -608,6 +615,39 @@ export default function OperatorRegisterPage() {
               </p>
             )}
 
+            {/* Operator Agreement T&Cs */}
+            <div className="mt-5 border border-slate-200 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-semibold text-slate-700">Operator Agreement</p>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                By registering, you agree to the VAYO Operator Agreement governing platform use, commission rates, and payout terms.
+              </p>
+              {operatorTerms && (
+                <a
+                  href={operatorTerms.documentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium hover:text-emerald-700 hover:underline"
+                >
+                  <FileCheck className="h-3.5 w-3.5" />
+                  Read the Operator Agreement
+                </a>
+              )}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={termsChecked}
+                  onChange={(e) => setTermsChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer flex-shrink-0"
+                />
+                <span className="text-sm text-slate-700 group-hover:text-slate-900 leading-snug select-none">
+                  I have read and agree to the Operator Agreement
+                  {operatorTerms && (
+                    <span className="text-slate-400 font-normal"> ({operatorTerms.versionLabel})</span>
+                  )}
+                </span>
+              </label>
+            </div>
+
             <div className="flex gap-3 mt-5">
               <button
                 type="button"
@@ -619,7 +659,7 @@ export default function OperatorRegisterPage() {
               <button
                 type="button"
                 onClick={onDocumentsSubmit}
-                disabled={submitting || nidFiles.length === 0 || certFiles.length === 0}
+                disabled={submitting || nidFiles.length === 0 || certFiles.length === 0 || !termsChecked}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition-colors text-sm"
               >
                 {submitting ? "Submitting application..." : "Submit Application"}

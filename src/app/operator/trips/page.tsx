@@ -4,17 +4,19 @@ import { useForm, Controller } from "react-hook-form";
 import {
   Calendar, Plus, X, MapPin, Bus, Clock,
   Users, ArrowRight, AlertCircle, ChevronLeft,
-  ChevronRight, XCircle, Loader2,
+  ChevronRight, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { operatorApi } from "@/lib/api";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import TripStatusBadge from "@/components/trips/TripStatusBadge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TripStatus = "SCHEDULED" | "BOARDING" | "DEPARTED" | "CANCELLED";
+type TripStatus = "SCHEDULED" | "BOARDING" | "DEPARTED" | "ARRIVED" | "CANCELLED";
 
-type RouteOption = { id: string; origin: string; destination: string };
+type RouteOption = { id: string; origin: string; destination: string; stops?: { id: string }[] };
 type BusOption   = { id: string; plateNumber: string; busType: string; totalSeats: number };
 
 type TripItem = {
@@ -39,12 +41,52 @@ type FormData = {
   price: number;
 };
 
-const STATUS_STYLES: Record<TripStatus, string> = {
-  SCHEDULED: "bg-blue-50 text-blue-700",
-  BOARDING:  "bg-amber-50 text-amber-700",
-  DEPARTED:  "bg-slate-100 text-slate-500",
-  CANCELLED: "bg-red-50 text-red-500",
+type StatusFilter = "ALL" | TripStatus;
+
+type TransitionAction = {
+  label: string;
+  variant: "primary" | "warning" | "danger";
+  dialogTitle: string;
+  dialogMessage: string;
+  call: (id: string) => Promise<unknown>;
+  nextStatus: TripStatus;
 };
+
+const TRANSITIONS: Partial<Record<TripStatus, TransitionAction>> = {
+  SCHEDULED: {
+    label: "Open Boarding",
+    variant: "primary",
+    dialogTitle: "Start Boarding?",
+    dialogMessage: "Start boarding for this trip? Passengers will be able to board.",
+    call: (id) => operatorApi.startBoarding(id),
+    nextStatus: "BOARDING",
+  },
+  BOARDING: {
+    label: "Mark Departed",
+    variant: "warning",
+    dialogTitle: "Mark as Departed?",
+    dialogMessage: "Mark this trip as departed? This cannot be undone.",
+    call: (id) => operatorApi.departTrip(id),
+    nextStatus: "DEPARTED",
+  },
+  DEPARTED: {
+    label: "Mark Arrived",
+    variant: "primary",
+    dialogTitle: "Mark as Arrived?",
+    dialogMessage: "Mark this trip as arrived? This closes the trip for revenue accounting.",
+    call: (id) => operatorApi.arriveTrip(id),
+    nextStatus: "ARRIVED",
+  },
+};
+
+const STATUS_FILTER_LABELS: { key: StatusFilter; label: string }[] = [
+  { key: "ALL",       label: "All" },
+  { key: "SCHEDULED", label: "Scheduled" },
+  { key: "BOARDING",  label: "Boarding" },
+  { key: "DEPARTED",  label: "Departed" },
+  { key: "ARRIVED",   label: "Arrived" },
+  { key: "CANCELLED", label: "Cancelled" },
+];
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-RW", { day: "numeric", month: "short", year: "numeric" });
@@ -99,7 +141,7 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
               <p className="text-xs text-slate-400">Assign a bus to a route and time</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -117,7 +159,6 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-            {/* Route */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Route</label>
               <div className="relative">
@@ -133,9 +174,19 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
                 </select>
               </div>
               {errors.routeId && <p className="text-xs text-red-500 mt-1">{errors.routeId.message}</p>}
+              {(() => {
+                const sel = routes.find((r) => r.id === watch("routeId"));
+                if (sel && (sel.stops?.length ?? 0) <= 2) {
+                  return (
+                    <p className="text-xs text-amber-600 mt-1">
+                      This route only has origin and destination stops. Add intermediate stops in Routes to enable partial boarding.
+                    </p>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
-            {/* Bus */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Bus</label>
               <div className="relative">
@@ -158,7 +209,6 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
               )}
             </div>
 
-            {/* Departure */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> Departure Date & Time</span>
@@ -179,7 +229,6 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
               {errors.departureTime && <p className="text-xs text-red-500 mt-1">{errors.departureTime.message}</p>}
             </div>
 
-            {/* Arrival */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-emerald-500" /> Arrival Date & Time</span>
@@ -203,7 +252,6 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
               {errors.arrivalTime && <p className="text-xs text-red-500 mt-1">{errors.arrivalTime.message}</p>}
             </div>
 
-            {/* Price */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ticket Price (RWF)</label>
               <input
@@ -218,9 +266,10 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
         )}
 
         <div className="px-6 py-4 border-t border-slate-200 flex gap-3">
-          <button onClick={onClose} type="button" className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
+          <button type="button" onClick={onClose} className="flex-1 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
           {routes.length > 0 && buses.length > 0 && (
             <button
+              type="button"
               onClick={handleSubmit(onSubmit)}
               disabled={isSubmitting || !isValid}
               className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2"
@@ -234,30 +283,6 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
   );
 }
 
-// ─── Cancel dialog ────────────────────────────────────────────────────────────
-
-function CancelDialog({ trip, onConfirm, onCancel }: { trip: TripItem; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <XCircle className="h-6 w-6 text-red-500" />
-        </div>
-        <h3 className="text-base font-bold text-slate-800 text-center mb-1">Cancel Trip?</h3>
-        <p className="text-sm text-slate-500 text-center mb-6">
-          <span className="font-medium text-slate-700">{trip.origin} → {trip.destination}</span> on{" "}
-          {fmtDate(trip.departureTime)} at {fmtTime(trip.departureTime)} will be cancelled.
-          Any confirmed bookings will be marked for refund.
-        </p>
-        <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50">Keep Trip</button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl text-sm">Cancel Trip</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function OperatorTripsPage() {
@@ -268,7 +293,13 @@ export default function OperatorTripsPage() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [toCancel, setToCancel] = useState<TripItem | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+
+  // Pending transition confirmation
+  const [pendingTrip, setPendingTrip] = useState<TripItem | null>(null);
+  const [pendingAction, setPendingAction] = useState<TransitionAction | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   const loadTrips = (p = 0) => {
     setLoading(true);
@@ -283,27 +314,43 @@ export default function OperatorTripsPage() {
   };
 
   useEffect(() => {
-    // Load trips + routes + buses in parallel for the schedule form
     loadTrips(0);
     operatorApi.routes(0).then((r) => setRoutes(r.data.data?.content ?? []));
     operatorApi.buses(0).then((r) => setBuses(r.data.data?.content ?? []));
   }, []);
 
-  const handleCancel = async () => {
-    if (!toCancel) return;
+  const openConfirm = (trip: TripItem, action: TransitionAction) => {
+    setPendingTrip(trip);
+    setPendingAction(action);
+  };
+
+  const handleConfirm = async () => {
+    if (!pendingTrip || !pendingAction) return;
+    setTransitioning(true);
+    setRowErrors((prev) => { const next = { ...prev }; delete next[pendingTrip.id]; return next; });
     try {
-      await operatorApi.cancelTrip(toCancel.id);
-      setTrips((prev) => prev.map((t) => t.id === toCancel.id ? { ...t, status: "CANCELLED" } : t));
-      toast.success("Trip cancelled");
-    } catch {
-      toast.error("Failed to cancel trip");
+      await pendingAction.call(pendingTrip.id);
+      setTrips((prev) =>
+        prev.map((t) => t.id === pendingTrip.id ? { ...t, status: pendingAction.nextStatus } : t)
+      );
+      toast.success(`Trip marked as ${pendingAction.nextStatus.toLowerCase()}`);
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number; data?: { message?: string } } };
+      const msg = err?.response?.status === 409
+        ? "This transition is not valid for the trip's current status."
+        : (err?.response?.data?.message ?? "Action failed. Please try again.");
+      setRowErrors((prev) => ({ ...prev, [pendingTrip.id]: msg }));
+      toast.error(msg);
     } finally {
-      setToCancel(null);
+      setTransitioning(false);
+      setPendingTrip(null);
+      setPendingAction(null);
     }
   };
 
-  const upcoming = trips.filter((t) => t.status === "SCHEDULED" || t.status === "BOARDING");
-  const past     = trips.filter((t) => t.status === "DEPARTED"  || t.status === "CANCELLED");
+  const filteredTrips = statusFilter === "ALL"
+    ? trips
+    : trips.filter((t) => t.status === statusFilter);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -313,12 +360,38 @@ export default function OperatorTripsPage() {
           <p className="text-slate-500 text-sm mt-1">Schedule and manage your departures</p>
         </div>
         <button
+          type="button"
           onClick={() => setShowPanel(true)}
           className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors"
         >
           <Plus className="h-4 w-4" /> Schedule Trip
         </button>
       </div>
+
+      {/* Status filter tabs */}
+      {!loading && trips.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-5">
+          {STATUS_FILTER_LABELS.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStatusFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                statusFilter === key
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+              }`}
+            >
+              {label}
+              {key !== "ALL" && (
+                <span className="ml-1.5 opacity-70">
+                  ({trips.filter((t) => t.status === key).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Empty */}
       {!loading && trips.length === 0 && (
@@ -335,6 +408,7 @@ export default function OperatorTripsPage() {
             </p>
           )}
           <button
+            type="button"
             onClick={() => setShowPanel(true)}
             className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-2.5 rounded-xl text-sm"
           >
@@ -363,31 +437,39 @@ export default function OperatorTripsPage() {
       {/* Trip list */}
       {!loading && trips.length > 0 && (
         <>
-          {upcoming.length > 0 && (
-            <div className="mb-6">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Upcoming</p>
-              <div className="space-y-3">
-                {upcoming.map((trip) => <TripCard key={trip.id} trip={trip} onCancel={() => setToCancel(trip)} />)}
-              </div>
-            </div>
-          )}
-
-          {past.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Past</p>
-              <div className="space-y-3">
-                {past.map((trip) => <TripCard key={trip.id} trip={trip} muted />)}
-              </div>
+          {filteredTrips.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-10">No trips with status &quot;{statusFilter}&quot;</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredTrips.map((trip) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  transitioning={transitioning}
+                  rowError={rowErrors[trip.id]}
+                  onAction={(action) => openConfirm(trip, action)}
+                />
+              ))}
             </div>
           )}
 
           {/* Pagination */}
           <div className="flex items-center justify-center gap-3 mt-6">
-            <button disabled={page === 0} onClick={() => loadTrips(page - 1)} className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed">
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => loadTrips(page - 1)}
+              className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-sm text-slate-500">Page {page + 1}</span>
-            <button disabled={!hasMore} onClick={() => loadTrips(page + 1)} className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed">
+            <button
+              type="button"
+              disabled={!hasMore}
+              onClick={() => loadTrips(page + 1)}
+              className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-emerald-600 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -402,20 +484,58 @@ export default function OperatorTripsPage() {
           onCreated={(trip) => setTrips((prev) => [trip, ...prev])}
         />
       )}
-      {toCancel && <CancelDialog trip={toCancel} onConfirm={handleCancel} onCancel={() => setToCancel(null)} />}
+
+      {pendingTrip && pendingAction && (
+        <ConfirmDialog
+          isOpen
+          title={pendingAction.dialogTitle}
+          message={pendingAction.dialogMessage}
+          confirmLabel={pendingAction.label}
+          confirmVariant={pendingAction.variant}
+          onConfirm={handleConfirm}
+          onCancel={() => { setPendingTrip(null); setPendingAction(null); }}
+          isLoading={transitioning}
+        />
+      )}
     </div>
   );
 }
 
-function TripCard({ trip, onCancel, muted = false }: { trip: TripItem; onCancel?: () => void; muted?: boolean }) {
+// ─── Trip card ────────────────────────────────────────────────────────────────
+
+const ACTION_BTN_STYLES: Record<string, string> = {
+  primary: "bg-blue-600 hover:bg-blue-700 text-white",
+  warning: "bg-orange-500 hover:bg-orange-600 text-white",
+  danger:  "bg-red-600 hover:bg-red-700 text-white",
+};
+
+const CANCEL_ACTION: TransitionAction = {
+  label: "Cancel Trip",
+  variant: "danger",
+  dialogTitle: "Cancel Trip",
+  dialogMessage: "Cancel this trip? All confirmed passengers will be notified and refunded automatically.",
+  call: (id) => operatorApi.cancelTrip(id),
+  nextStatus: "CANCELLED",
+};
+
+function TripCard({
+  trip, transitioning, rowError, onAction,
+}: {
+  trip: TripItem;
+  transitioning: boolean;
+  rowError?: string;
+  onAction: (action: TransitionAction) => void;
+}) {
   const occupancy = trip.totalSeats > 0 ? Math.round((trip.bookedSeats / trip.totalSeats) * 100) : 0;
-  const canCancel = trip.status === "SCHEDULED" && onCancel;
+  const isTerminal = trip.status === "ARRIVED" || trip.status === "CANCELLED";
+  const transition = TRANSITIONS[trip.status];
+  const canCancel = trip.status === "SCHEDULED" || trip.status === "BOARDING";
 
   return (
-    <div className={`bg-white border rounded-xl p-4 sm:p-5 transition-colors ${muted ? "border-slate-100 opacity-60" : "border-slate-200 hover:border-slate-300"}`}>
+    <div className={`bg-white border rounded-xl p-4 sm:p-5 transition-colors ${isTerminal ? "border-slate-100 opacity-60" : "border-slate-200 hover:border-slate-300"}`}>
       <div className="flex items-start gap-4">
         <div className="flex-1 min-w-0">
-          {/* Route */}
+          {/* Route + status badge */}
           <div className="flex items-center gap-2 flex-wrap mb-2">
             <div className="flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
@@ -423,9 +543,7 @@ function TripCard({ trip, onCancel, muted = false }: { trip: TripItem; onCancel?
             </div>
             <ArrowRight className="h-3.5 w-3.5 text-slate-300 flex-shrink-0" />
             <span className="font-semibold text-slate-800 text-sm">{trip.destination}</span>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_STYLES[trip.status]}`}>
-              {trip.status}
-            </span>
+            <TripStatusBadge status={trip.status} />
           </div>
 
           {/* Details */}
@@ -448,7 +566,7 @@ function TripCard({ trip, onCancel, muted = false }: { trip: TripItem; onCancel?
           </div>
 
           {/* Occupancy bar */}
-          {!muted && trip.totalSeats > 0 && (
+          {!isTerminal && trip.totalSeats > 0 && (
             <div className="mt-3 flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                 <div
@@ -459,18 +577,39 @@ function TripCard({ trip, onCancel, muted = false }: { trip: TripItem; onCancel?
               <span className="text-xs text-slate-400 w-8 text-right">{occupancy}%</span>
             </div>
           )}
+
+          {/* Row-level error */}
+          {rowError && (
+            <p className="mt-2 text-xs text-red-500">{rowError}</p>
+          )}
         </div>
 
-        {/* Cancel button */}
-        {canCancel && (
-          <button
-            onClick={onCancel}
-            className="flex-shrink-0 p-2 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-            title="Cancel trip"
-          >
-            <XCircle className="h-4 w-4" />
-          </button>
-        )}
+        {/* Action buttons */}
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          {trip.status === "ARRIVED" && (
+            <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Completed</span>
+          )}
+          {transition && (
+            <button
+              type="button"
+              onClick={() => onAction(transition)}
+              disabled={transitioning}
+              className={`text-xs font-semibold px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${ACTION_BTN_STYLES[transition.variant]}`}
+            >
+              {transition.label}
+            </button>
+          )}
+          {canCancel && (
+            <button
+              type="button"
+              onClick={() => onAction(CANCEL_ACTION)}
+              disabled={transitioning}
+              className="text-xs font-medium px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:border-red-300 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Cancel Trip
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

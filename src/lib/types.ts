@@ -35,6 +35,18 @@ export interface StaffMember {
   createdAt: string;
 }
 
+// ─── Route Stops ─────────────────────────────────────────────────────────────
+
+export interface RouteStop {
+  id: string;
+  stopName: string;
+  stopOrder: number;
+  distanceFromOriginKm: number;
+  boardingAllowed: boolean;
+  droppingAllowed: boolean;
+  countryCode: string;
+}
+
 // ─── Search ──────────────────────────────────────────────────────────────────
 
 export interface TripSearchResult {
@@ -58,6 +70,7 @@ export interface SeatStatus {
   seatNumber: string;
   status: "AVAILABLE" | "BOOKED" | "LOCKED" | "SELECTED";
   type: "WINDOW" | "AISLE";
+  segmentPrice?: number | null;
 }
 
 export interface TripDetail {
@@ -72,6 +85,11 @@ export interface TripDetail {
   totalSeats: number;
   availableSeats: number;
   seats: SeatStatus[];
+  stops: RouteStop[];
+  // Segment-aware fields — populated after stop selection
+  segmentPrice?: number | null;
+  originStopId?: string;
+  destinationStopId?: string;
 }
 
 // ─── Booking ─────────────────────────────────────────────────────────────────
@@ -101,6 +119,10 @@ export interface BookingResponse {
   totalAmount: number;
   seatLockExpiresAt?: string;
   createdAt: string;
+  // Populated on cancellation response
+  refundAmountRwf?: number;
+  expectedTimelineMessage?: string;
+  refund?: RefundSummary;
 }
 
 export interface TicketResponse {
@@ -123,6 +145,7 @@ export interface TicketResponse {
   totalAmount: number;
   paymentMethod: string;
   createdAt: string;
+  refund?: RefundSummary;
 }
 
 // ─── Operator ─────────────────────────────────────────────────────────────────
@@ -193,6 +216,110 @@ export interface OperatorAdminResponse {
   status: "PENDING" | "ACTIVE" | "SUSPENDED";
   commissionRate: number;
   createdAt: string;
+}
+
+// ─── Refund Policy ───────────────────────────────────────────────────────────
+
+export interface RefundPolicyTier {
+  label: string;
+  refundPct: number;
+  hoursThreshold: number | null;
+}
+
+export interface RefundPolicyResponse {
+  operatorName: string;
+  tiers: RefundPolicyTier[];
+  platformRules: {
+    operatorCancelledFullRefund: boolean;
+    earlyDepartureFullRefund: boolean;
+    serviceFeeNonRefundable: boolean;
+  };
+  policyVersion: number;
+  effectiveFrom: string;
+}
+
+// ─── Refund ───────────────────────────────────────────────────────────────────
+
+export type RefundStatus =
+  | "AWAITING_APPROVAL"
+  | "APPROVED"
+  | "PENDING"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
+  | "REJECTED";
+
+export interface RefundSummary {
+  refundId: string;
+  status: RefundStatus;
+  refundAmountRwf: number;
+  rejectionReason?: string;
+  requestedAt: string;
+  reviewedAt?: string;
+  escalatedToAdmin?: boolean;
+}
+
+export interface OperatorRefundItem {
+  refundId: string;
+  bookingReference: string;
+  passengerName: string;
+  passengerPhone: string;
+  tripRoute: string;
+  tripDepartureTime: string;
+  cancelledAt?: string;
+  hoursBeforeDeparture?: number;
+  refundAmountRwf: number;
+  totalAmountPaid?: number;
+  serviceFeeAmount?: number;
+  appliedPolicyTier?: string;
+  appliedPctUsed?: number;
+  status: RefundStatus;
+  requestedAt: string;
+  rejectionReason?: string;
+  escalatedToAdmin?: boolean;
+}
+
+// ─── Payouts ─────────────────────────────────────────────────────────────────
+
+export interface PayoutBalance {
+  availableAmountRwf: number;
+  pendingAmountRwf: number;
+  inPayoutAmountRwf: number;
+  totalEarnedRwf: number;
+  bookingCount: number;
+  earliestEligibleBookingDate?: string;
+}
+
+export interface PayoutAccount {
+  accountType: "MOMO_BUSINESS" | "BANK_TRANSFER";
+  accountNumber: string;
+  accountName: string;
+  bankName?: string;
+  bankCode?: string;
+  isVerified: boolean;
+  verifiedAt?: string;
+}
+
+export type PayoutStatus =
+  | "PENDING_APPROVAL"
+  | "APPROVED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
+  | "REJECTED";
+
+export interface PayoutSummary {
+  id: string;
+  payoutReference: string;
+  status: PayoutStatus;
+  amountRwf: number;
+  bookingCount: number;
+  periodFrom?: string;
+  periodTo?: string;
+  requestedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  processedAt?: string;
 }
 
 // ─── API Wrapper ─────────────────────────────────────────────────────────────

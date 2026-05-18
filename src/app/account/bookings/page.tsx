@@ -7,8 +7,9 @@ import {
   Bus, CheckCircle2, XCircle, AlertCircle, Hourglass, Loader2, X,
 } from "lucide-react";
 import { bookingApi } from "@/lib/api";
-import { BookingResponse } from "@/lib/types";
+import { BookingResponse, RefundStatus } from "@/lib/types";
 import { toast } from "sonner";
+import RefundStatusBadge from "@/components/refund/RefundStatusBadge";
 
 const STATUS_CONFIG: Record<string, { label: string; style: string; icon: React.ElementType }> = {
   CONFIRMED: { label: "Confirmed",  style: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -102,15 +103,22 @@ export default function MyBookingsPage() {
     if (!cancelTarget) return;
     setCancelling(true);
     try {
-      await bookingApi.cancel(cancelTarget.bookingReference);
+      const r = await bookingApi.cancel(cancelTarget.bookingReference);
+      const resp = r.data.data;
       setBookings((prev) =>
         prev.map((b) =>
           b.bookingReference === cancelTarget.bookingReference
-            ? { ...b, status: "CANCELLED" }
+            ? {
+                ...b,
+                status: "CANCELLED",
+                refund: resp?.refundAmountRwf
+                  ? { refundId: "", status: "AWAITING_APPROVAL" as RefundStatus, refundAmountRwf: resp.refundAmountRwf, requestedAt: new Date().toISOString() }
+                  : b.refund,
+              }
             : b
         )
       );
-      toast.success("Booking cancelled. Check your email/SMS for confirmation.");
+      toast.success("Booking cancelled — refund request submitted to operator.");
       setCancelTarget(null);
     } catch (e: unknown) {
       const axiosErr = e as { response?: { data?: { message?: string } } };
@@ -180,10 +188,15 @@ export default function MyBookingsPage() {
                         {b.origin} → {b.destination}
                       </span>
                     </div>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full border flex-shrink-0 flex items-center gap-1 ${cfg.style}`}>
-                      <StatusIcon className="h-3 w-3" />
-                      {cfg.label}
-                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
+                      <span className={`text-xs font-medium px-2.5 py-1 rounded-full border flex items-center gap-1 ${cfg.style}`}>
+                        <StatusIcon className="h-3 w-3" />
+                        {cfg.label}
+                      </span>
+                      {b.status === "CANCELLED" && b.refund && (
+                        <RefundStatusBadge status={b.refund.status as RefundStatus} />
+                      )}
+                    </div>
                   </div>
 
                   {/* Details */}

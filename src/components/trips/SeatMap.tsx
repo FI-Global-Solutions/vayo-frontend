@@ -6,6 +6,8 @@ interface Props {
   selected: string[];
   onToggle: (seatNumber: string) => void;
   maxSelectable: number;
+  segmentPrice?: number | null;
+  basePrice?: number;
 }
 
 function seatStyle(status: SeatStatus["status"], isSelected: boolean) {
@@ -15,7 +17,8 @@ function seatStyle(status: SeatStatus["status"], isSelected: boolean) {
   return "bg-white border-slate-300 text-slate-700 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50";
 }
 
-export default function SeatMap({ seats, selected, onToggle, maxSelectable }: Props) {
+export default function SeatMap({ seats, selected, onToggle, maxSelectable, segmentPrice, basePrice }: Props) {
+  const displayPrice = segmentPrice ?? basePrice ?? null;
   // Group seats into rows by extracting the number prefix
   const rows: Record<string, SeatStatus[]> = {};
   seats.forEach((seat) => {
@@ -85,7 +88,9 @@ export default function SeatMap({ seats, selected, onToggle, maxSelectable }: Pr
                         key={seat.seatNumber}
                         type="button"
                         onClick={() => handleClick(seat)}
-                        title={seat.seatNumber}
+                        title={seat.status === "AVAILABLE" && displayPrice
+                          ? `${seat.seatNumber} — ${displayPrice.toLocaleString()} RWF`
+                          : seat.seatNumber}
                         className={`w-9 h-9 rounded-lg border-2 text-xs font-semibold transition-all ${seatStyle(seat.status, selected.includes(seat.seatNumber))}`}
                       >
                         {seat.seatNumber.replace(/[0-9]/g, "")}
@@ -103,7 +108,9 @@ export default function SeatMap({ seats, selected, onToggle, maxSelectable }: Pr
                         key={seat.seatNumber}
                         type="button"
                         onClick={() => handleClick(seat)}
-                        title={seat.seatNumber}
+                        title={seat.status === "AVAILABLE" && displayPrice
+                          ? `${seat.seatNumber} — ${displayPrice.toLocaleString()} RWF`
+                          : seat.seatNumber}
                         className={`w-9 h-9 rounded-lg border-2 text-xs font-semibold transition-all ${seatStyle(seat.status, selected.includes(seat.seatNumber))}`}
                       >
                         {seat.seatNumber.replace(/[0-9]/g, "")}

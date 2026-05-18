@@ -4,9 +4,12 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ChevronRight, Phone, Mail, User, XCircle, Loader2, CreditCard } from "lucide-react";
-import { bookingApi, paymentApi } from "@/lib/api";
+import { ChevronRight, Phone, Mail, User, XCircle, Loader2, CreditCard, AlertCircle } from "lucide-react";
+import { bookingApi, paymentApi, refundApi } from "@/lib/api";
 import { getStoredUser } from "@/store/auth";
+import { TermsModal } from "@/components/terms/TermsModal";
+import { RefundPolicyCard } from "@/components/refund/RefundPolicyCard";
+import { RefundPolicyResponse } from "@/lib/types";
 
 declare global {
   interface Window {
@@ -28,6 +31,10 @@ function CheckoutPage() {
   const tripId = params.get("tripId") ?? "";
   const seats = (params.get("seats") ?? "").split(",").filter(Boolean);
   const amount = Number(params.get("amount") ?? 0);
+  const originStopId = params.get("originStopId") ?? "";
+  const destinationStopId = params.get("destinationStopId") ?? "";
+  const originStopName = params.get("originStopName") ?? "";
+  const destinationStopName = params.get("destinationStopName") ?? "";
   const router = useRouter();
 
   const [step, setStep] = useState<"details" | "paying" | "verifying" | "failed">("details");
@@ -35,6 +42,18 @@ function CheckoutPage() {
   const [bookingReference, setBookingReference] = useState("");
   const [error, setError] = useState("");
   const flwModalRef = useRef<{ close: () => void } | null>(null);
+
+  // T&Cs gate — tracks whether passenger terms were accepted this session
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  // Pending form data saved while terms modal is open
+  const pendingFormData = useRef<FormData | null>(null);
+
+  // Refund policy
+  const [refundPolicy, setRefundPolicy] = useState<RefundPolicyResponse | null>(null);
+  const [refundPolicyLoading, setRefundPolicyLoading] = useState(true);
+  const [refundPolicyError, setRefundPolicyError] = useState(false);
+  const [refundPolicyAcknowledged, setRefundPolicyAcknowledged] = useState(false);
 
   const user = getStoredUser();
   const SERVICE_FEE = 300;
@@ -63,7 +82,18 @@ function CheckoutPage() {
     return () => { flwModalRef.current?.close(); };
   }, []);
 
-  const onDetailsSubmit = async (data: FormData) => {
+  // Fetch refund policy in parallel with page load
+  useEffect(() => {
+    if (!tripId) return;
+    setRefundPolicyLoading(true);
+    setRefundPolicyError(false);
+    refundApi.getTripRefundPolicy(tripId)
+      .then((res) => setRefundPolicy(res.data.data ?? res.data))
+      .catch(() => setRefundPolicyError(true))
+      .finally(() => setRefundPolicyLoading(false));
+  }, [tripId]);
+
+  const initiateBooking = async (data: FormData) => {
     setError("");
     try {
       const res = await bookingApi.initiate({
@@ -72,14 +102,47 @@ function CheckoutPage() {
         passengerName: data.passengerName,
         passengerPhone: data.passengerPhone,
         passengerEmail: data.passengerEmail || undefined,
+        ...(originStopId ? { originStopId } : {}),
+        ...(destinationStopId ? { destinationStopId } : {}),
       });
       const id = res.data.data.bookingId;
       setBookingId(id);
       openFlutterwave(id, data);
     } catch (e: unknown) {
-      const axiosErr = e as { response?: { data?: { message?: string } } };
+      const axiosErr = e as { response?: { status?: number; data?: { error?: string; message?: string } } };
+      // Backend returned TERMS_NOT_ACCEPTED — show modal and retry after acceptance
+      if (axiosErr?.response?.status === 403 && axiosErr?.response?.data?.error === "TERMS_NOT_ACCEPTED") {
+        setTermsAccepted(false);
+        pendingFormData.current = data;
+        setShowTermsModal(true);
+        return;
+      }
       setError(axiosErr?.response?.data?.message ?? "Failed to initiate booking. Please try again.");
     }
+  };
+
+  const onDetailsSubmit = async (data: FormData) => {
+    if (!termsAccepted) {
+      pendingFormData.current = data;
+      setShowTermsModal(true);
+      return;
+    }
+    await initiateBooking(data);
+  };
+
+  const onTermsAccepted = async () => {
+    setTermsAccepted(true);
+    setShowTermsModal(false);
+    if (pendingFormData.current) {
+      await initiateBooking(pendingFormData.current);
+      pendingFormData.current = null;
+    }
+  };
+
+  const onTermsDismissed = () => {
+    setShowTermsModal(false);
+    pendingFormData.current = null;
+    setError("You must accept the Terms & Conditions to complete your booking.");
   };
 
   const openFlutterwave = (bId: string, data: FormData) => {
@@ -124,6 +187,10 @@ function CheckoutPage() {
       const res = await paymentApi.verify(bId, flwTransactionId);
       const ref = res.data.data?.bookingReference;
       setBookingReference(ref);
+      // Fire-and-forget — record refund policy acknowledgement; do not block navigation
+      refundApi.acknowledgeRefundPolicy(ref).catch((e) =>
+        console.warn("Refund policy acknowledgement failed:", e)
+      );
       router.push(`/booking/${ref}`);
     } catch (e: unknown) {
       const axiosErr = e as { response?: { data?: { message?: string } } };
@@ -143,6 +210,33 @@ function CheckoutPage() {
         <ChevronRight className="h-3 w-3" />
         <span className="text-slate-700 font-medium">Checkout</span>
       </nav>
+
+      {/* Segment summary — shown when stop names are available */}
+      {(originStopName || destinationStopName) && (
+        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 mb-4 text-sm text-slate-600">
+          <span className="font-medium">{originStopName || "Origin"}</span>
+          <ChevronRight className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
+          <span className="font-medium">{destinationStopName || "Destination"}</span>
+        </div>
+      )}
+
+      {/* Guard: stop IDs missing — redirect back */}
+      {!originStopId && !destinationStopId && tripId && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-800 font-medium">Stop selection required</p>
+            <p className="text-xs text-amber-700 mt-0.5">Please go back and select your boarding and dropping stops.</p>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="mt-2 text-xs font-semibold text-amber-700 hover:text-amber-900 underline"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Order summary */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
@@ -212,13 +306,38 @@ function CheckoutPage() {
             </div>
           </div>
 
+          {/* Refund policy — must be acknowledged before payment */}
+          <div className="pt-2">
+            {refundPolicyLoading && (
+              <div className="border border-slate-200 rounded-xl p-4 flex items-center gap-3 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-400 flex-shrink-0" />
+                Loading refund policy...
+              </div>
+            )}
+            {refundPolicyError && !refundPolicyLoading && (
+              <div className="border border-red-200 bg-red-50 rounded-xl p-4 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">
+                  Unable to load refund policy. Please refresh the page before continuing.
+                </p>
+              </div>
+            )}
+            {refundPolicy && !refundPolicyLoading && (
+              <RefundPolicyCard
+                policy={refundPolicy}
+                acknowledged={refundPolicyAcknowledged}
+                onAcknowledged={() => setRefundPolicyAcknowledged(true)}
+              />
+            )}
+          </div>
+
           {/* Payment method info */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center gap-3">
             <CreditCard className="h-4 w-4 text-slate-400 flex-shrink-0" />
             <p className="text-xs text-slate-500">Pay securely with <span className="font-medium text-slate-700">Card</span> or <span className="font-medium text-slate-700">Mobile Money (MTN/Airtel)</span> via Flutterwave</p>
           </div>
 
-          <button type="submit" disabled={isSubmitting || !isValid}
+          <button type="submit" disabled={isSubmitting || !isValid || !refundPolicyAcknowledged || refundPolicyLoading || refundPolicyError}
             className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl mt-2 flex items-center justify-center gap-2">
             {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</> : `Pay ${total.toLocaleString()} RWF →`}
           </button>
@@ -253,6 +372,13 @@ function CheckoutPage() {
           </button>
         </div>
       )}
+
+      <TermsModal
+        isOpen={showTermsModal}
+        termsType="PASSENGER"
+        onAccepted={onTermsAccepted}
+        onDismissed={onTermsDismissed}
+      />
     </div>
   );
 }
