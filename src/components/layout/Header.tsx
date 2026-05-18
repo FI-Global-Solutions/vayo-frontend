@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, LogOut, LayoutDashboard, Ticket, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, Ticket, ChevronDown, RefreshCw, Banknote } from "lucide-react";
 import { getStoredUser, clearAuth } from "@/store/auth";
 import { AuthUser } from "@/lib/types";
 import { VayoLogo } from "@/components/ui/VayoLogo";
@@ -132,6 +132,28 @@ export default function Header() {
                       </Link>
                     )}
 
+                    {(user.role === "OPERATOR_ADMIN" || user.role === "OPERATOR_SUPER_ADMIN") && (
+                      <Link
+                        href="/operator/refunds"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Refund Requests
+                      </Link>
+                    )}
+
+                    {(user.role === "OPERATOR_ADMIN" || user.role === "OPERATOR_SUPER_ADMIN") && (
+                      <Link
+                        href="/operator/payouts"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-emerald-600"
+                      >
+                        <Banknote className="h-4 w-4" />
+                        Payouts
+                      </Link>
+                    )}
+
                     <div className="border-t border-slate-100 mt-1 pt-1">
                       <button
                         type="button"
@@ -199,6 +221,18 @@ export default function Header() {
                   <Link href="/account/bookings" className="flex items-center gap-2 px-2 py-2 text-sm text-slate-700 hover:text-emerald-600" onClick={() => setMenuOpen(false)}>
                     <Ticket className="h-4 w-4" />
                     My Tickets
+                  </Link>
+                )}
+                {(user.role === "OPERATOR_ADMIN" || user.role === "OPERATOR_SUPER_ADMIN") && (
+                  <Link href="/operator/refunds" className="flex items-center gap-2 px-2 py-2 text-sm text-slate-700 hover:text-emerald-600" onClick={() => setMenuOpen(false)}>
+                    <RefreshCw className="h-4 w-4" />
+                    Refund Requests
+                  </Link>
+                )}
+                {(user.role === "OPERATOR_ADMIN" || user.role === "OPERATOR_SUPER_ADMIN") && (
+                  <Link href="/operator/payouts" className="flex items-center gap-2 px-2 py-2 text-sm text-slate-700 hover:text-emerald-600" onClick={() => setMenuOpen(false)}>
+                    <Banknote className="h-4 w-4" />
+                    Payouts
                   </Link>
                 )}
                 <button type="button" onClick={handleLogout} className="flex items-center gap-2 w-full px-2 py-2 text-sm text-red-500 mt-1">

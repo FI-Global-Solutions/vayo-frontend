@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Route, Bus, Calendar, Users, TrendingUp, ArrowRight, Clock } from "lucide-react";
-import { operatorApi } from "@/lib/api";
-import { OperatorDashboardStats, UserRole } from "@/lib/types";
+import { Route, Bus, Calendar, Users, TrendingUp, ArrowRight, Clock, Banknote } from "lucide-react";
+import { operatorApi, payoutApi } from "@/lib/api";
+import { OperatorDashboardStats, UserRole, PayoutBalance } from "@/lib/types";
 import { getStoredUser } from "@/store/auth";
 
 function StatCard({ icon: Icon, label, value, color }: {
@@ -32,6 +32,7 @@ const ALL_QUICK_LINKS = [
 
 export default function OperatorDashboardPage() {
   const [stats, setStats] = useState<OperatorDashboardStats | null>(null);
+  const [balance, setBalance] = useState<PayoutBalance | null | "error">(null);
   const [loading, setLoading] = useState(true);
   const role = getStoredUser()?.role as UserRole | undefined;
 
@@ -39,7 +40,13 @@ export default function OperatorDashboardPage() {
     operatorApi.dashboard()
       .then((r) => setStats(r.data.data))
       .finally(() => setLoading(false));
-  }, []);
+    // Fetch balance in parallel; graceful degradation on failure
+    if (role === "OPERATOR_SUPER_ADMIN" || role === "OPERATOR_ADMIN" || role === "ACCOUNTANT") {
+      payoutApi.getBalance()
+        .then((r) => setBalance(r.data.data))
+        .catch(() => setBalance("error"));
+    }
+  }, [role]);
 
   const quickLinks = ALL_QUICK_LINKS.filter(
     (l) => !role || l.roles.includes(role)
@@ -88,6 +95,32 @@ export default function OperatorDashboardPage() {
             <TrendingUp className="h-10 w-10 text-emerald-300" />
           </div>
         </div>
+      )}
+
+      {/* Available balance card */}
+      {(role === "OPERATOR_SUPER_ADMIN" || role === "OPERATOR_ADMIN" || role === "ACCOUNTANT") && (
+        <Link href="/operator/payouts" className="block mb-8 group">
+          <div className="bg-white border border-slate-200 rounded-xl p-5 hover:border-emerald-300 hover:shadow-sm transition-all flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-100">
+                <Banknote className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-400 mb-0.5">Available Balance</p>
+                <p className="text-xl font-bold text-slate-900">
+                  {balance === null
+                    ? <span className="inline-block w-20 h-5 bg-slate-200 rounded animate-pulse" />
+                    : balance === "error"
+                    ? "--"
+                    : `${(balance as PayoutBalance).availableAmountRwf.toLocaleString()} RWF`}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium group-hover:gap-3 transition-all">
+              View Payouts <ArrowRight className="h-3.5 w-3.5" />
+            </div>
+          </div>
+        </Link>
       )}
 
       {/* Quick links */}
