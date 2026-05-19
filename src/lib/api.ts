@@ -112,6 +112,61 @@ export const adminApi = {
   suspend: (operatorId: string) => api.patch(`/admin/operators/${operatorId}/suspend`),
   operatorDocuments: (operatorId: string) =>
     api.get(`/admin/operators/${operatorId}/documents`),
+  operatorBalance: (operatorId: string) =>
+    api.get(`/admin/operators/${operatorId}/balance`),
+  verifyPayoutAccount: (operatorId: string) =>
+    api.post(`/admin/operators/${operatorId}/payout-account/verify`),
+  payouts: (params?: { operatorId?: string; status?: string; fromDate?: string; toDate?: string; page?: number }) => {
+    const p = new URLSearchParams({ page: String(params?.page ?? 0), size: "20" });
+    if (params?.operatorId) p.set("operatorId", params.operatorId);
+    if (params?.status)     p.set("status", params.status);
+    if (params?.fromDate)   p.set("fromDate", params.fromDate);
+    if (params?.toDate)     p.set("toDate", params.toDate);
+    return api.get(`/admin/payouts?${p.toString()}`);
+  },
+  getPayout: (reference: string) => api.get(`/admin/payouts/${reference}`),
+  approvePayout: (reference: string) => api.post(`/admin/payouts/${reference}/approve`),
+  rejectPayout: (reference: string, rejectionReason: string) =>
+    api.post(`/admin/payouts/${reference}/reject`, { rejectionReason }),
+  retryPayout: (reference: string) => api.post(`/admin/payouts/${reference}/retry`),
+  reconciliation: (fromDate?: string, toDate?: string) => {
+    const p = new URLSearchParams();
+    if (fromDate) p.set("fromDate", fromDate);
+    if (toDate)   p.set("toDate", toDate);
+    const qs = p.toString();
+    return api.get(`/admin/payouts/reconciliation${qs ? `?${qs}` : ""}`);
+  },
+  refunds: (params?: {
+    status?: string;
+    reason?: string;
+    operatorId?: string;
+    fromDate?: string;
+    toDate?: string;
+    escalatedToAdmin?: boolean;
+    page?: number;
+  }) => {
+    const p = new URLSearchParams({ page: String(params?.page ?? 0), size: "20" });
+    if (params?.status)         p.set("status", params.status);
+    if (params?.reason)         p.set("reason", params.reason);
+    if (params?.operatorId)     p.set("operatorId", params.operatorId);
+    if (params?.fromDate)       p.set("fromDate", params.fromDate);
+    if (params?.toDate)         p.set("toDate", params.toDate);
+    if (params?.escalatedToAdmin != null) p.set("escalatedToAdmin", String(params.escalatedToAdmin));
+    return api.get(`/admin/refunds?${p.toString()}`);
+  },
+  initiateRefund: (bookingReference: string, reason: string, notes?: string) =>
+    api.post(`/admin/bookings/${bookingReference}/refund`, { reason, notes }),
+  getDefaultPolicy: () => api.get("/admin/refund-policy/default"),
+  updateDefaultPolicy: (data: {
+    over48hRefundPct: number;
+    h24To48hRefundPct: number;
+    h12To24hRefundPct: number;
+    h4To12hRefundPct: number;
+    under4hRefundPct: number;
+  }) => api.put("/admin/refund-policy/default", data),
+  getPricingConfig: () => api.get("/admin/pricing/config"),
+  updateDieselPrice: (value: number) => api.put("/admin/pricing/diesel", { value }),
+  updateSegmentExponent: (value: number) => api.put("/admin/pricing/exponent", { value }),
 };
 
 // ─── Refund Policy ────────────────────────────────────────────────────────────
@@ -183,6 +238,35 @@ export const operatorApi = {
   approveRefund: (refundId: string) => api.post(`/operator/refunds/${refundId}/approve`),
   rejectRefund: (refundId: string, rejectionReason: string) =>
     api.post(`/operator/refunds/${refundId}/reject`, { rejectionReason }),
+  // Refund policy
+  getRefundPolicy: () => api.get("/operator/refund-policy"),
+  updateRefundPolicy: (data: {
+    over48hRefundPct: number;
+    h24To48hRefundPct: number;
+    h12To24hRefundPct: number;
+    h4To12hRefundPct: number;
+    under4hRefundPct: number;
+  }) => api.put("/operator/refund-policy", data),
+  // Price suggestion
+  getPriceSuggestion: (routeId: string, busId: string) =>
+    api.get(`/operator/pricing/suggest?routeId=${routeId}&busId=${busId}`),
+  // Segment prices
+  getSegmentPrices: (tripId: string) =>
+    api.get(`/operator/trips/${tripId}/segment-prices`),
+  setSegmentPrices: (tripId: string, overrides: { originStopId: string; destinationStopId: string; overridePriceRwf: number }[]) =>
+    api.put(`/operator/trips/${tripId}/segment-prices`, overrides),
+  deleteSegmentOverride: (tripId: string, originStopId: string, destinationStopId: string) =>
+    api.delete(`/operator/trips/${tripId}/segment-prices/${originStopId}/${destinationStopId}`),
+  // Pricing inputs
+  getPricingInputs: () => api.get("/operator/pricing/inputs"),
+  updatePricingInputs: (data: {
+    fuelConsumptionLPer100Km: number;
+    targetOccupancyPct: number;
+    operatorMarginPct: number;
+    maintenanceCostPerKm: number;
+    driverConductorAllowancePerTrip: number;
+    overheadPerTrip: number;
+  }) => api.put("/operator/pricing/inputs", data),
   // Backward-compat for conductors page
   conductors: () => api.get("/operator/conductors"),
   createConductor: (data: object) => api.post("/operator/staff", { ...data, role: "CONDUCTOR" }),

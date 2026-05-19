@@ -4,13 +4,17 @@ import { useForm, Controller } from "react-hook-form";
 import {
   Calendar, Plus, X, MapPin, Bus, Clock,
   Users, ArrowRight, AlertCircle, ChevronLeft,
-  ChevronRight, Loader2,
+  ChevronRight, Loader2, Lightbulb, ChevronDown, ChevronUp,
+  Grid3X3,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { operatorApi } from "@/lib/api";
+import { PriceSuggestionResult } from "@/lib/types";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import TripStatusBadge from "@/components/trips/TripStatusBadge";
+import SegmentPriceMatrix from "@/components/trips/SegmentPriceMatrix";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,16 +102,132 @@ function fmtTime(iso: string) {
 
 // ─── Schedule trip panel ──────────────────────────────────────────────────────
 
+function PriceSuggestionCard({
+  suggestion,
+  onUsePrice,
+  onClose,
+}: {
+  suggestion: PriceSuggestionResult;
+  onUsePrice: (price: number) => void;
+  onClose: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isHigh = suggestion.confidence === "HIGH";
+
+  const rows: { label: string; value: number }[] = [
+    { label: "Fuel cost",                     value: suggestion.fuelCost },
+    { label: "Driver & conductor allowance",  value: suggestion.driverAllowance },
+    { label: "Border toll",                   value: suggestion.borderToll },
+    { label: "Maintenance",                   value: suggestion.maintenanceCost },
+    { label: "Overhead",                      value: suggestion.overhead },
+    { label: "Total trip cost",               value: suggestion.totalTripCost },
+    { label: `Breakeven / seat (${suggestion.occupancyPct}% occ.)`, value: suggestion.breakevenPerSeat },
+    { label: `Suggested / seat (+${suggestion.marginPct}% margin)`,  value: suggestion.suggestedPricePerSeat },
+  ];
+
+  return (
+    <div className="border border-emerald-200 bg-emerald-50/60 rounded-xl overflow-hidden">
+      {/* Summary row */}
+      <div className="flex items-center justify-between px-4 py-3 gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Lightbulb className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-lg font-extrabold text-slate-900 tabular-nums">
+                {Number(suggestion.suggestedPriceRounded).toLocaleString()} <span className="text-sm font-normal text-slate-400">RWF</span>
+              </p>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isHigh ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {isHigh ? "High confidence" : "Low confidence"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {suggestion.distanceKm} km · {suggestion.busCapacity} seats · {suggestion.fuelConsumption} L/100km
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => onUsePrice(Number(suggestion.suggestedPriceRounded))}
+            className="text-xs font-semibold px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+          >
+            Use
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="p-1.5 rounded-lg hover:bg-emerald-100 text-slate-400"
+            title="Toggle breakdown"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-emerald-100 text-slate-400"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Expandable breakdown */}
+      {expanded && (
+        <div className="border-t border-emerald-200 px-4 py-3 space-y-1">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center justify-between text-xs">
+              <span className="text-slate-500">{r.label}</span>
+              <span className="font-mono font-semibold text-slate-700">
+                {Number(r.value).toLocaleString()} RWF
+              </span>
+            </div>
+          ))}
+          {!isHigh && (
+            <p className="text-xs text-amber-600 mt-2 pt-2 border-t border-amber-100">
+              Using system defaults.{" "}
+              <Link href="/operator/settings" className="underline font-semibold hover:text-amber-800">
+                Add your cost inputs
+              </Link>{" "}
+              for a more accurate suggestion.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TripPanel({ routes, buses, onClose, onCreated }: {
   routes: RouteOption[];
   buses: BusOption[];
   onClose: () => void;
   onCreated: (trip: TripItem) => void;
 }) {
-  const { register, handleSubmit, watch, control, formState: { isSubmitting, errors, isValid } } = useForm<FormData>({ mode: "onChange" });
-  const selectedBusId = watch("busId");
-  const departureValue = watch("departureTime");
+  const { register, handleSubmit, watch, control, setValue, formState: { isSubmitting, errors, isValid } } = useForm<FormData>({ mode: "onChange" });
+  const selectedBusId   = watch("busId");
+  const selectedRouteId = watch("routeId");
+  const departureValue  = watch("departureTime");
   const selectedBus = buses.find((b) => b.id === selectedBusId);
+
+  const [suggestion, setSuggestion]         = useState<PriceSuggestionResult | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+
+  const canSuggest = !!selectedRouteId && !!selectedBusId;
+
+  const fetchSuggestion = async () => {
+    if (!canSuggest) return;
+    setSuggestionLoading(true);
+    setSuggestion(null);
+    try {
+      const r = await operatorApi.getPriceSuggestion(selectedRouteId, selectedBusId);
+      setSuggestion(r.data.data);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } } };
+      toast.error(err?.response?.data?.message ?? "Failed to get price suggestion");
+    } finally {
+      setSuggestionLoading(false);
+    }
+  };
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -253,7 +373,20 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">Ticket Price (RWF)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-600">Ticket Price (RWF)</label>
+                <button
+                  type="button"
+                  onClick={fetchSuggestion}
+                  disabled={!canSuggest || suggestionLoading}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:text-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {suggestionLoading
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <Lightbulb className="h-3.5 w-3.5" />}
+                  Get price suggestion
+                </button>
+              </div>
               <input
                 {...register("price", { required: "Required", min: { value: 100, message: "Min 100 RWF" } })}
                 type="number"
@@ -261,6 +394,19 @@ function TripPanel({ routes, buses, onClose, onCreated }: {
                 className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
               {errors.price && <p className="text-xs text-red-500 mt-1">{errors.price.message}</p>}
+
+              {suggestion && (
+                <div className="mt-3">
+                  <PriceSuggestionCard
+                    suggestion={suggestion}
+                    onUsePrice={(price) => {
+                      setValue("price", price, { shouldValidate: true });
+                      setSuggestion(null);
+                    }}
+                    onClose={() => setSuggestion(null)}
+                  />
+                </div>
+              )}
             </div>
           </form>
         )}
@@ -294,6 +440,7 @@ export default function OperatorTripsPage() {
   const [hasMore, setHasMore] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [segmentMatrixTrip, setSegmentMatrixTrip] = useState<TripItem | null>(null);
 
   // Pending transition confirmation
   const [pendingTrip, setPendingTrip] = useState<TripItem | null>(null);
@@ -448,6 +595,7 @@ export default function OperatorTripsPage() {
                   transitioning={transitioning}
                   rowError={rowErrors[trip.id]}
                   onAction={(action) => openConfirm(trip, action)}
+                  onSegmentPrices={() => setSegmentMatrixTrip(trip)}
                 />
               ))}
             </div>
@@ -497,6 +645,15 @@ export default function OperatorTripsPage() {
           isLoading={transitioning}
         />
       )}
+
+      {segmentMatrixTrip && (
+        <SegmentPriceMatrix
+          tripId={segmentMatrixTrip.id}
+          tripLabel={`${segmentMatrixTrip.origin} → ${segmentMatrixTrip.destination} · ${fmtTime(segmentMatrixTrip.departureTime)}`}
+          basePrice={segmentMatrixTrip.price}
+          onClose={() => setSegmentMatrixTrip(null)}
+        />
+      )}
     </div>
   );
 }
@@ -519,12 +676,13 @@ const CANCEL_ACTION: TransitionAction = {
 };
 
 function TripCard({
-  trip, transitioning, rowError, onAction,
+  trip, transitioning, rowError, onAction, onSegmentPrices,
 }: {
   trip: TripItem;
   transitioning: boolean;
   rowError?: string;
   onAction: (action: TransitionAction) => void;
+  onSegmentPrices: () => void;
 }) {
   const occupancy = trip.totalSeats > 0 ? Math.round((trip.bookedSeats / trip.totalSeats) * 100) : 0;
   const isTerminal = trip.status === "ARRIVED" || trip.status === "CANCELLED";
@@ -588,6 +746,16 @@ function TripCard({
         <div className="flex-shrink-0 flex flex-col items-end gap-2">
           {trip.status === "ARRIVED" && (
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Completed</span>
+          )}
+          {trip.status === "SCHEDULED" && (
+            <button
+              type="button"
+              onClick={onSegmentPrices}
+              className="flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+              Segment Prices
+            </button>
           )}
           {transition && (
             <button

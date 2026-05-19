@@ -322,6 +322,134 @@ export interface PayoutSummary {
   processedAt?: string;
 }
 
+// ─── Pricing ─────────────────────────────────────────────────────────────────
+
+export interface PriceSuggestionResult {
+  fuelCost: number;
+  driverAllowance: number;
+  borderToll: number;
+  maintenanceCost: number;
+  overhead: number;
+  totalTripCost: number;
+  breakevenPerSeat: number;
+  suggestedPricePerSeat: number;
+  suggestedPriceRounded: number;
+  dieselPrice: number;
+  fuelConsumption: number;
+  occupancyPct: number;
+  marginPct: number;
+  distanceKm: number;
+  busCapacity: number;
+  confidence: "HIGH" | "LOW";
+}
+
+export interface SegmentPriceEntry {
+  originStopId: string;
+  originStopName: string;
+  destinationStopId: string;
+  destinationStopName: string;
+  price: number;
+  overridden: boolean;
+}
+
+// ─── Operator Settings ───────────────────────────────────────────────────────
+
+export interface OperatorRefundPolicyData {
+  over48hRefundPct: number;
+  h24To48hRefundPct: number;
+  h12To24hRefundPct: number;
+  h4To12hRefundPct: number;
+  under4hRefundPct: number;
+  policyVersion: number;
+  effectiveFrom?: string;
+  operatorCustomPolicy: boolean;
+}
+
+export interface OperatorPricingInputsData {
+  fuelConsumptionLPer100Km: number;
+  targetOccupancyPct: number;
+  operatorMarginPct: number;
+  maintenanceCostPerKm: number;
+  driverConductorAllowancePerTrip: number;
+  overheadPerTrip: number;
+  updatedAt?: string;
+  isCustom: boolean;
+}
+
+// ─── Admin Refunds ───────────────────────────────────────────────────────────
+
+export type RefundReason =
+  | "PASSENGER_CANCELLED"
+  | "OPERATOR_CANCELLED"
+  | "EARLY_DEPARTURE"
+  | "FORCE_MAJEURE"
+  | "ADMIN_OVERRIDE";
+
+export interface AdminRefundItem {
+  refundId: string;
+  bookingReference: string;
+  refundAmountRwf: number;
+  serviceFeeRefunded: boolean;
+  refundReason: RefundReason;
+  status: RefundStatus;
+  appliedPolicyTier?: string;
+  appliedPctUsed?: number;
+  policyVersionAtBooking: number;
+  totalAmountPaid?: number;
+  serviceFeeAmount?: number;
+  calculatedAt?: string;
+  processedAt?: string;
+  gatewayRefundReference?: string;
+  failureReason?: string;
+  rejectionReason?: string;
+  reviewedAt?: string;
+  requestedAt?: string;
+  escalatedToAdmin: boolean;
+  passengerName?: string;
+  passengerPhone?: string;
+  tripRoute?: string;
+  tripDepartureTime?: string;
+  hoursBeforeDeparture?: number;
+}
+
+export interface AdminRefundPolicy {
+  over48hRefundPct: number;
+  h24To48hRefundPct: number;
+  h12To24hRefundPct: number;
+  h4To12hRefundPct: number;
+  under4hRefundPct: number;
+  policyVersion: number;
+  effectiveFrom?: string;
+}
+
+// ─── Admin Payouts ───────────────────────────────────────────────────────────
+
+export interface AdminPayoutSummary {
+  id: string;
+  payoutReference: string;
+  status: PayoutStatus;
+  amountRwf: number;
+  bookingCount: number;
+  periodFrom?: string;
+  periodTo?: string;
+  requestedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+  gatewayTransferId?: string;
+  processedAt?: string;
+  failureReason?: string;
+  createdAt: string;
+}
+
+export interface ReconciliationReport {
+  totalCompleted: number;
+  totalPendingApproval: number;
+  totalApproved: number;
+  totalProcessing: number;
+  totalFailed: number;
+  totalRejected: number;
+}
+
 // ─── API Wrapper ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
