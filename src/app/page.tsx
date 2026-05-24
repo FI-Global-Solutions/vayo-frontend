@@ -47,6 +47,12 @@ export default function HomePage() {
           {/* Search form floats over hero */}
           <div className="-mb-16 sm:-mb-16 relative z-10">
             <SearchForm />
+            <p className="text-center mt-4 text-sm text-emerald-100">
+              Already booked?{" "}
+              <Link href="/booking/lookup" className="underline hover:text-white font-medium">
+                Find your ticket →
+              </Link>
+            </p>
           </div>
         </div>
       </section>

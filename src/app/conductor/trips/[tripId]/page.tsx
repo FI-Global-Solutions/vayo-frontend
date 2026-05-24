@@ -10,14 +10,6 @@ import { toast } from "sonner";
 import { conductorApi } from "@/lib/api";
 import { ManifestEntry, VerifyTicketResponse } from "@/lib/types";
 
-const BOOKING_STATUS_STYLES: Record<string, string> = {
-  CONFIRMED: "bg-emerald-50 text-emerald-700",
-  USED:      "bg-slate-100 text-slate-500",
-  CANCELLED: "bg-red-50 text-red-500",
-  PENDING:   "bg-amber-50 text-amber-700",
-  EXPIRED:   "bg-slate-100 text-slate-400",
-};
-
 export default function ConductorScannerPage() {
   const { tripId } = useParams<{ tripId: string }>();
   const [manifest, setManifest] = useState<ManifestEntry[]>([]);
@@ -26,10 +18,9 @@ export default function ConductorScannerPage() {
   const [reference, setReference] = useState("");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<VerifyTicketResponse | null>(null);
+  const [verifyingSeat, setVerifyingSeat] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // initial = true → show error state + toast on failure
-  // initial = false → silent background refresh after a verify
   const loadManifest = useCallback((initial = false) => {
     if (initial) {
       setLoadingManifest(true);
@@ -45,7 +36,6 @@ export default function ConductorScannerPage() {
           setManifestError(true);
           toast.error("Could not load manifest. Tap Retry.");
         }
-        // silent failure on background refresh — manifest just stays stale
       })
       .finally(() => {
         if (initial) setLoadingManifest(false);
@@ -54,11 +44,11 @@ export default function ConductorScannerPage() {
 
   useEffect(() => {
     loadManifest(true);
-    // Small delay so the page is mounted before focusing
     const t = setTimeout(() => inputRef.current?.focus(), 100);
     return () => clearTimeout(t);
   }, [loadManifest]);
 
+  // QR scan / reference entry — marks all seats (no seatNumber)
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reference.trim()) return;
@@ -69,8 +59,8 @@ export default function ConductorScannerPage() {
       const data: VerifyTicketResponse = res.data.data;
       setResult(data);
       if (data.valid) {
-        toast.success("Ticket verified — passenger boarded!");
-        loadManifest(false); // silent refresh
+        toast.success("Ticket verified — passenger(s) boarded!");
+        loadManifest(false);
       } else {
         toast.error(data.message);
       }
@@ -83,8 +73,35 @@ export default function ConductorScannerPage() {
     }
   };
 
-  const boarded = manifest.filter((m) => m.status === "USED").length;
-  const total = manifest.length;
+  // Per-seat verify from manifest row
+  const handleVerifySeat = async (bookingRef: string, seatNumber: string) => {
+    const key = `${bookingRef}:${seatNumber}`;
+    setVerifyingSeat(key);
+    try {
+      const res = await conductorApi.verify(bookingRef, seatNumber);
+      const data: VerifyTicketResponse = res.data.data;
+      if (data.valid) {
+        toast.success(`Seat ${seatNumber} boarded!`);
+        loadManifest(false);
+      } else {
+        toast.error(data.message);
+      }
+    } catch {
+      toast.error("Verification failed. Please try again.");
+    } finally {
+      setVerifyingSeat(null);
+    }
+  };
+
+  // Group entries by booking reference for the manifest display
+  const groupedByRef = manifest.reduce<Record<string, ManifestEntry[]>>((acc, entry) => {
+    if (!acc[entry.bookingReference]) acc[entry.bookingReference] = [];
+    acc[entry.bookingReference].push(entry);
+    return acc;
+  }, {});
+
+  const boardedCount = manifest.filter((m) => m.boardedAt).length;
+  const totalCount = manifest.length;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -104,12 +121,12 @@ export default function ConductorScannerPage() {
           <div className="text-right">
             <div className="flex items-center gap-1 text-emerald-200 text-sm mb-1">
               <Users className="h-3.5 w-3.5" />
-              <span>{boarded}/{total} boarded</span>
+              <span>{boardedCount}/{totalCount} boarded</span>
             </div>
             <div className="w-32 h-2 bg-emerald-900 rounded-full overflow-hidden">
               <div
                 className="h-full bg-emerald-300 rounded-full transition-all duration-500"
-                style={{ width: total ? `${(boarded / total) * 100}%` : "0%" }}
+                style={{ width: totalCount ? `${(boardedCount / totalCount) * 100}%` : "0%" }}
               />
             </div>
           </div>
@@ -122,6 +139,7 @@ export default function ConductorScannerPage() {
           <ScanLine className="h-4 w-4 text-emerald-600" />
           <h2 className="font-semibold text-slate-800">Scan / Enter Reference</h2>
         </div>
+        <p className="text-xs text-slate-400 mb-3">Scanning a reference without a seat marks all passengers as boarded.</p>
 
         <form onSubmit={handleVerify} className="flex gap-2">
           <input
@@ -178,7 +196,7 @@ export default function ConductorScannerPage() {
           <Users className="h-4 w-4 text-slate-400" />
           Passenger Manifest
         </h2>
-        <span className="text-xs font-normal text-slate-400 ml-auto">{total} passengers</span>
+        <span className="text-xs font-normal text-slate-400 ml-auto">{totalCount} seat{totalCount !== 1 ? "s" : ""}</span>
         <button
           type="button"
           onClick={() => loadManifest(true)}
@@ -212,11 +230,8 @@ export default function ConductorScannerPage() {
         <div className="bg-white rounded-xl border border-red-100 p-8 text-center">
           <AlertCircle className="h-8 w-8 text-red-300 mx-auto mb-2" />
           <p className="text-sm font-medium text-slate-600 mb-3">Could not load manifest</p>
-          <button
-            type="button"
-            onClick={() => loadManifest(true)}
-            className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium hover:underline"
-          >
+          <button type="button" onClick={() => loadManifest(true)}
+            className="inline-flex items-center gap-1.5 text-sm text-emerald-600 font-medium hover:underline">
             <RefreshCw className="h-3.5 w-3.5" />
             Retry
           </button>
@@ -226,28 +241,66 @@ export default function ConductorScannerPage() {
           No confirmed bookings yet
         </div>
       ) : (
-        <div className="space-y-2">
-          {manifest.map((entry) => (
-            <div
-              key={entry.bookingId}
-              className={`bg-white rounded-xl border p-3 flex items-center gap-3 ${entry.status === "USED" ? "border-slate-100 opacity-60" : "border-slate-200"}`}
-            >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${entry.status === "USED" ? "bg-slate-100 text-slate-400" : "bg-emerald-100 text-emerald-700"}`}>
-                {entry.passengerName.charAt(0).toUpperCase()}
+        <div className="space-y-3">
+          {Object.entries(groupedByRef).map(([ref, entries]) => (
+            <div key={ref} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              {/* Group header */}
+              <div className="bg-slate-50 border-b border-slate-100 px-3 py-2 flex items-center justify-between">
+                <span className="text-xs font-mono font-semibold text-slate-500 tracking-wide">{ref}</span>
+                <span className="text-xs text-slate-400">{entries.length} seat{entries.length !== 1 ? "s" : ""}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-800 text-sm truncate">{entry.passengerName}</p>
-                <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                  <span className="font-mono">{entry.bookingReference}</span>
-                  <span className="flex items-center gap-0.5">
-                    <Clock className="h-2.5 w-2.5" />
-                    Seats: {entry.seatNumbers.join(", ")}
-                  </span>
-                </div>
+
+              {/* Per-seat rows */}
+              <div className="divide-y divide-slate-100">
+                {entries.map((entry) => {
+                  const isBoarded = !!entry.boardedAt;
+                  const verifyKey = `${entry.bookingReference}:${entry.seatNumber}`;
+                  const isVerifying = verifyingSeat === verifyKey;
+
+                  return (
+                    <div key={entry.seatNumber}
+                      className={`flex items-center gap-3 px-3 py-3 ${isBoarded ? "opacity-60" : ""}`}>
+                      {/* Seat badge */}
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 font-mono ${
+                        isBoarded ? "bg-slate-100 text-slate-400" : "bg-emerald-100 text-emerald-700"
+                      }`}>
+                        {entry.seatNumber}
+                      </div>
+
+                      {/* Passenger info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-slate-800 text-sm truncate">{entry.passengerName}</p>
+                          {entry.isPrimaryPassenger && (
+                            <span className="text-xs text-slate-400 flex-shrink-0">· primary</span>
+                          )}
+                        </div>
+                        {entry.passengerPhone && (
+                          <p className="text-xs text-slate-400 mt-0.5 font-mono">{entry.passengerPhone}</p>
+                        )}
+                      </div>
+
+                      {/* Status / action */}
+                      {isBoarded ? (
+                        <div className="flex items-center gap-1 text-emerald-600 flex-shrink-0">
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="text-xs font-medium">Boarded</span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleVerifySeat(entry.bookingReference, entry.seatNumber)}
+                          disabled={!!verifyingSeat}
+                          className="no-print flex-shrink-0 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg"
+                        >
+                          {isVerifying ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
+                          {isVerifying ? "..." : "Board"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${BOOKING_STATUS_STYLES[entry.status] ?? "bg-slate-100 text-slate-500"}`}>
-                {entry.status === "USED" ? "Boarded" : entry.status}
-              </span>
             </div>
           ))}
         </div>
