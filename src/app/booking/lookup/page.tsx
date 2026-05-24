@@ -1,19 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { format } from "date-fns";
 import {
-  CheckCircle, Clock, Bus, Printer, Share2, ArrowRight,
-  AlertCircle, Loader2,
+  Search, Phone, Hash, Loader2, AlertCircle, CheckCircle,
+  Clock, ArrowRight, Bus, QrCode, XCircle,
 } from "lucide-react";
 import { bookingApi, refundApi } from "@/lib/api";
-import { TicketResponse, RefundSummary, RefundPolicyResponse, PassengerInfo } from "@/lib/types";
-import { clearStopSelection } from "@/lib/utils";
+import { TicketResponse, RefundPolicyResponse, RefundSummary } from "@/lib/types";
 import { QRCodeCanvas } from "qrcode.react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import RefundStatusBadge from "@/components/refund/RefundStatusBadge";
 
-// ─── Refund status banner ─────────────────────────────────────────────────────
+// ─── Refund banner (reused from ticket page) ──────────────────────────────────
 
 function RefundBanner({ refund }: { refund: RefundSummary }) {
   if (refund.status === "AWAITING_APPROVAL") {
@@ -31,7 +33,6 @@ function RefundBanner({ refund }: { refund: RefundSummary }) {
       </div>
     );
   }
-
   if (refund.status === "APPROVED" || refund.status === "PENDING" || refund.status === "PROCESSING") {
     return (
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
@@ -47,7 +48,6 @@ function RefundBanner({ refund }: { refund: RefundSummary }) {
       </div>
     );
   }
-
   if (refund.status === "COMPLETED") {
     return (
       <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
@@ -63,7 +63,6 @@ function RefundBanner({ refund }: { refund: RefundSummary }) {
       </div>
     );
   }
-
   if (refund.status === "REJECTED") {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
@@ -71,22 +70,17 @@ function RefundBanner({ refund }: { refund: RefundSummary }) {
           <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold text-red-800">Refund request was not approved</p>
-            {refund.rejectionReason && (
-              <p className="text-xs text-red-600 mt-0.5">{refund.rejectionReason}</p>
-            )}
+            {refund.rejectionReason && <p className="text-xs text-red-600 mt-0.5">{refund.rejectionReason}</p>}
             <p className="text-xs text-slate-500 mt-1">
               Contact{" "}
-              <a href="mailto:support@vayo.rw" className="underline hover:text-emerald-600">
-                support@vayo.rw
-              </a>{" "}
-              if you believe this decision is incorrect.
+              <a href="mailto:support@vayo.rw" className="underline hover:text-emerald-600">support@vayo.rw</a>
+              {" "}if you believe this is incorrect.
             </p>
           </div>
         </div>
       </div>
     );
   }
-
   if (refund.status === "FAILED") {
     return (
       <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
@@ -94,46 +88,68 @@ function RefundBanner({ refund }: { refund: RefundSummary }) {
           <AlertCircle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold text-orange-800">Refund processing failed</p>
-            <p className="text-xs text-orange-600 mt-0.5">
-              Our team has been notified and will contact you within 24 hours.
-            </p>
+            <p className="text-xs text-orange-600 mt-0.5">Our team has been notified and will contact you within 24 hours.</p>
           </div>
         </div>
       </div>
     );
   }
-
   return null;
 }
 
-// ─── Ticket page ──────────────────────────────────────────────────────────────
+// ─── Lookup form schema ───────────────────────────────────────────────────────
 
-export default function TicketPage() {
-  const { reference } = useParams<{ reference: string }>();
+const lookupSchema = z.object({
+  reference: z.string().min(1, "Booking reference is required"),
+  phone: z.string().min(9, "Phone number is required"),
+});
+type LookupForm = z.infer<typeof lookupSchema>;
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+function BookingLookupPage() {
+  const searchParams = useSearchParams();
+  const prefillRef = searchParams.get("reference") ?? "";
+
+  // State 1: lookup form / State 2: ticket display
   const [ticket, setTicket] = useState<TicketResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  // phone kept in component state only — never in URL or localStorage (PII)
+  const [lookedUpPhone, setLookedUpPhone] = useState("");
+  const [lookupError, setLookupError] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
 
   // Cancel flow
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelMessage, setCancelMessage] = useState("");
+  const [cancelError, setCancelError] = useState("");
   const [refundAfterCancel, setRefundAfterCancel] = useState<RefundSummary | null>(null);
-
-  // Estimated refund for dialog
   const [policyLoading, setPolicyLoading] = useState(false);
   const [estimatedRefund, setEstimatedRefund] = useState<number | null>(null);
 
-  useEffect(() => {
-    bookingApi.ticket(reference)
-      .then((r) => {
-        const t = r.data.data;
-        setTicket(t);
-        if (t?.tripId) clearStopSelection(t.tripId);
-      })
-      .catch(() => setError("Ticket not found or you don't have permission to view it."))
-      .finally(() => setLoading(false));
-  }, [reference]);
+  const { register, handleSubmit, formState: { errors } } = useForm<LookupForm>({
+    resolver: zodResolver(lookupSchema),
+    defaultValues: { reference: prefillRef, phone: "" },
+  });
+
+  const onLookup = async (data: LookupForm) => {
+    setLookupError("");
+    setLookupLoading(true);
+    try {
+      const res = await bookingApi.lookup(data.reference.trim().toUpperCase(), data.phone.trim());
+      setTicket(res.data.data);
+      setLookedUpPhone(data.phone.trim());
+    } catch (e: unknown) {
+      const axiosErr = e as { response?: { status?: number } };
+      if (axiosErr?.response?.status === 404) {
+        setLookupError("No booking found with these details. Please check your reference and phone number.");
+      } else {
+        setLookupError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   const openCancelDialog = async () => {
     if (!ticket) return;
@@ -142,7 +158,8 @@ export default function TicketPage() {
       const r = await refundApi.getTripRefundPolicy(ticket.tripId);
       const policy: RefundPolicyResponse = r.data.data;
       const hoursUntil = (new Date(ticket.departureTime).getTime() - Date.now()) / 3_600_000;
-      const tier = [...policy.tiers].sort((a, b) => (b.hoursThreshold ?? 0) - (a.hoursThreshold ?? 0))
+      const tier = [...policy.tiers]
+        .sort((a, b) => (b.hoursThreshold ?? 0) - (a.hoursThreshold ?? 0))
         .find((t) => hoursUntil >= (t.hoursThreshold ?? 0));
       if (tier) setEstimatedRefund(Math.round((ticket.totalAmount * tier.refundPct) / 100));
     } catch {
@@ -156,8 +173,9 @@ export default function TicketPage() {
   const handleCancel = async () => {
     if (!ticket) return;
     setCancelling(true);
+    setCancelError("");
     try {
-      const r = await bookingApi.cancel(reference);
+      const r = await bookingApi.guestCancel(ticket.bookingReference, lookedUpPhone);
       const resp = r.data.data;
       const refundAmt = resp?.refundAmountRwf ?? estimatedRefund;
       setCancelMessage(
@@ -177,39 +195,97 @@ export default function TicketPage() {
       setShowCancelDialog(false);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
-      setCancelMessage("");
-      // Re-show error inline — keep dialog open so user can retry or dismiss
-      setError(err?.response?.data?.message ?? "Could not cancel booking. Please try again.");
+      setCancelError(err?.response?.data?.message ?? "Could not cancel booking. Please try again.");
       setShowCancelDialog(false);
     } finally {
       setCancelling(false);
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const resetToLookup = () => {
+    setTicket(null);
+    setLookedUpPhone("");
+    setLookupError("");
+    setCancelMessage("");
+    setCancelError("");
+    setRefundAfterCancel(null);
+    setEstimatedRefund(null);
+  };
 
-  if (loading) {
+  // ── STATE 1: Lookup form ────────────────────────────────────────────────────
+
+  if (!ticket) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12">
-        <div className="space-y-4 animate-pulse">
-          <div className="h-8 bg-slate-200 rounded w-48 mx-auto" />
-          <div className="h-64 bg-slate-100 rounded-2xl" />
+      <div className="max-w-md mx-auto px-4 sm:px-6 py-8">
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Search className="h-7 w-7 text-emerald-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-slate-800">Find Your Booking</h1>
+          <p className="text-sm text-slate-500 mt-2">
+            Enter your booking reference and the phone number you used when booking.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit(onLookup)} className="space-y-4">
+          <div>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Booking Reference <span className="text-red-500 ml-0.5">*</span>
+            </label>
+            <div className="relative">
+              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                {...register("reference")}
+                placeholder="e.g. VAYO-ABC123"
+                className="w-full pl-9 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 uppercase"
+                style={{ textTransform: "uppercase" }}
+              />
+            </div>
+            {errors.reference && <p className="text-red-500 text-xs mt-1">{errors.reference.message}</p>}
+          </div>
+
+          <div>
+            <label className="flex items-center gap-0.5 text-xs font-semibold text-slate-600 mb-1.5">
+              Phone Number <span className="text-red-500 ml-0.5">*</span>
+            </label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                {...register("phone")}
+                placeholder="The phone used when booking"
+                className="w-full pl-9 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+          </div>
+
+          {lookupError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{lookupError}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={lookupLoading}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2"
+          >
+            {lookupLoading ? <><Loader2 className="h-4 w-4 animate-spin" /> Searching...</> : <><Search className="h-4 w-4" /> Find Booking</>}
+          </button>
+        </form>
+
+        <div className="mt-6 bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Your reference was sent to your phone via SMS when you booked. It starts with <span className="font-mono font-semibold text-slate-700">VAYO-</span>
+          </p>
         </div>
       </div>
     );
   }
 
-  if (error && !ticket) {
-    return (
-      <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <p className="text-red-500 font-medium">{error}</p>
-      </div>
-    );
-  }
+  // ── STATE 2: Ticket display ─────────────────────────────────────────────────
 
-  if (!ticket) return null;
-
-  const isConfirmed = ticket.status === "CONFIRMED" || ticket.status === "USED";
   const isCancelled = ticket.status === "CANCELLED";
   const canCancel = ticket.status === "CONFIRMED";
   const activeRefund = refundAfterCancel ?? ticket.refund ?? null;
@@ -221,37 +297,26 @@ export default function TicketPage() {
   return (
     <div className="max-w-md mx-auto px-4 sm:px-6 py-8">
 
-      {/* Success banner */}
-      {isConfirmed && (
-        <div className="no-print flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6">
-          <CheckCircle className="h-6 w-6 text-emerald-500 flex-shrink-0" />
-          <div>
-            <p className="font-semibold text-emerald-800 text-sm">Booking confirmed!</p>
-            <p className="text-xs text-emerald-600">Your ticket has been sent by SMS and email.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Cancel success message */}
+      {/* Cancel success */}
       {cancelMessage && (
-        <div className="no-print flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
           <CheckCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-amber-800">{cancelMessage}</p>
         </div>
       )}
 
-      {/* API error (non-fatal) */}
-      {error && ticket && (
-        <div className="no-print bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-          <p className="text-sm text-red-600">{error}</p>
+      {/* Cancel error */}
+      {cancelError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+          <p className="text-sm text-red-600">{cancelError}</p>
         </div>
       )}
 
       {/* Refund status banner */}
-      {activeRefund && <div className="no-print"><RefundBanner refund={activeRefund} /></div>}
+      {activeRefund && <RefundBanner refund={activeRefund} />}
 
       {/* Ticket card */}
-      <div className="print-ticket bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
+      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg">
 
         {/* Header strip */}
         <div className="bg-emerald-600 text-white px-6 py-4">
@@ -264,32 +329,25 @@ export default function TicketPage() {
           </div>
         </div>
 
-        {/* Route section */}
+        {/* Route */}
         <div className="px-6 py-5 border-b border-dashed border-slate-200">
           <div className="flex items-center gap-3">
             <div className="text-center flex-1">
-              <p className="text-2xl font-bold text-slate-900">
-                {format(new Date(ticket.departureTime), "HH:mm")}
-              </p>
+              <p className="text-2xl font-bold text-slate-900">{format(new Date(ticket.departureTime), "HH:mm")}</p>
               <p className="text-sm font-medium text-slate-700 mt-0.5">{ticket.origin}</p>
               <p className="text-xs text-slate-400">{format(new Date(ticket.departureTime), "dd MMM yyyy")}</p>
             </div>
-
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-1 text-xs text-slate-400">
-                <Clock className="h-3 w-3" />
-                Direct
+                <Clock className="h-3 w-3" /> Direct
               </div>
               <div className="w-16 flex items-center">
                 <div className="h-px flex-1 bg-slate-300" />
                 <ArrowRight className="h-3 w-3 text-slate-400 flex-shrink-0" />
               </div>
             </div>
-
             <div className="text-center flex-1">
-              <p className="text-2xl font-bold text-slate-900">
-                {format(new Date(ticket.arrivalTime), "HH:mm")}
-              </p>
+              <p className="text-2xl font-bold text-slate-900">{format(new Date(ticket.arrivalTime), "HH:mm")}</p>
               <p className="text-sm font-medium text-slate-700 mt-0.5">{ticket.destination}</p>
               <p className="text-xs text-slate-400">{format(new Date(ticket.arrivalTime), "dd MMM yyyy")}</p>
             </div>
@@ -303,10 +361,6 @@ export default function TicketPage() {
             <p className="font-semibold text-slate-800 mt-0.5">{ticket.passengerName}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wide">Phone</p>
-            <p className="font-semibold text-slate-800 mt-0.5">{ticket.passengerPhone}</p>
-          </div>
-          <div>
             <p className="text-xs text-slate-400 uppercase tracking-wide">Seat(s)</p>
             <p className="font-semibold text-slate-800 mt-0.5">{ticket.seatNumbers.join(", ")}</p>
           </div>
@@ -318,10 +372,18 @@ export default function TicketPage() {
             <p className="text-xs text-slate-400 uppercase tracking-wide">Amount Paid</p>
             <p className="font-semibold text-slate-800 mt-0.5">{ticket.totalAmount.toLocaleString()} RWF</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wide">Bus Type</p>
-            <p className="font-semibold text-slate-800 mt-0.5">{ticket.busType}</p>
-          </div>
+          {ticket.boardingStop && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Boarding</p>
+              <p className="font-semibold text-slate-800 mt-0.5">{ticket.boardingStop}</p>
+            </div>
+          )}
+          {ticket.droppingStop && (
+            <div>
+              <p className="text-xs text-slate-400 uppercase tracking-wide">Dropping</p>
+              <p className="font-semibold text-slate-800 mt-0.5">{ticket.droppingStop}</p>
+            </div>
+          )}
           {isCancelled && (
             <div className="col-span-2">
               <p className="text-xs text-slate-400 uppercase tracking-wide">Status</p>
@@ -330,41 +392,20 @@ export default function TicketPage() {
           )}
         </div>
 
-        {/* Per-seat passenger list — only shown for multi-seat bookings */}
-        {ticket.passengers && ticket.passengers.length > 1 && (
-          <div className="px-6 py-4 border-b border-dashed border-slate-200">
-            <p className="text-xs text-slate-400 uppercase tracking-wide mb-3">Passengers</p>
-            <div className="divide-y divide-slate-100">
-              {ticket.passengers.map((p: PassengerInfo) => (
-                <div key={p.seatNumber} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <span className="font-mono text-xs font-bold text-emerald-700 w-8 flex-shrink-0">{p.seatNumber}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{p.passengerName}</p>
-                    {p.isPrimaryPassenger && (
-                      <p className="text-xs text-slate-400 mt-0.5">Primary contact</p>
-                    )}
-                  </div>
-                  {p.passengerPhone && (
-                    <span className="text-xs text-slate-500 font-mono flex-shrink-0">{p.passengerPhone}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* QR Code — only for confirmed/used tickets */}
+        {/* QR code — only for active tickets */}
         {!isCancelled && (
           <div className="px-6 py-6 flex flex-col items-center">
             <p className="text-xs text-slate-500 mb-4 text-center">
               Show this QR code or your booking reference to the conductor
             </p>
             <div className="bg-white p-3 border border-slate-200 rounded-xl">
-              <QRCodeCanvas
-                value={ticket.qrCodeBase64 || ticket.bookingReference}
-                size={160}
-                level="M"
-              />
+              {ticket.qrCodeBase64 ? (
+                <QRCodeCanvas value={ticket.qrCodeBase64} size={160} level="M" />
+              ) : (
+                <div className="w-40 h-40 flex items-center justify-center text-slate-300">
+                  <QrCode className="h-16 w-16" />
+                </div>
+              )}
             </div>
             <p className="text-xs font-mono font-bold text-slate-600 mt-3 tracking-widest">
               {ticket.bookingReference}
@@ -372,15 +413,14 @@ export default function TicketPage() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="bg-slate-50 px-6 py-3 text-center text-xs text-slate-400">
           Booked on {format(new Date(ticket.createdAt), "dd MMM yyyy, HH:mm")}
         </div>
       </div>
 
       {/* Actions */}
-      <div className="no-print mt-4 space-y-3">
-        {/* Refund status pill on cancelled tickets */}
+      <div className="mt-4 space-y-3">
+        {/* Refund status on cancelled */}
         {isCancelled && activeRefund && (
           <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
             <span>Refund status:</span>
@@ -396,32 +436,21 @@ export default function TicketPage() {
             disabled={policyLoading}
             className="w-full flex items-center justify-center gap-2 border border-red-200 text-red-600 hover:bg-red-50 font-medium py-3 rounded-xl text-sm disabled:opacity-50"
           >
-            {policyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            {policyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
             Cancel Booking
           </button>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-xl text-sm"
-          >
-            <Printer className="h-4 w-4" />
-            Print Ticket
-          </button>
-          <button
-            type="button"
-            onClick={() => navigator.share?.({ title: "VAYO Ticket", text: `My booking: ${ticket.bookingReference}` })}
-            className="flex-1 flex items-center justify-center gap-2 border border-slate-200 text-slate-600 font-medium py-3 rounded-xl hover:bg-slate-50 text-sm"
-          >
-            <Share2 className="h-4 w-4" />
-            Share
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={resetToLookup}
+          className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium py-3 rounded-xl text-sm"
+        >
+          <Search className="h-4 w-4" />
+          Find Another Booking
+        </button>
       </div>
 
-      {/* Cancel confirmation dialog */}
       <ConfirmDialog
         isOpen={showCancelDialog}
         title="Cancel Booking"
@@ -433,5 +462,13 @@ export default function TicketPage() {
         isLoading={cancelling}
       />
     </div>
+  );
+}
+
+export default function BookingLookupPageWrapper() {
+  return (
+    <Suspense fallback={<div className="max-w-md mx-auto px-4 py-12 text-center text-slate-400">Loading...</div>}>
+      <BookingLookupPage />
+    </Suspense>
   );
 }

@@ -84,6 +84,9 @@ export default function Header() {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
             <Link href="/" className="hover:text-emerald-600">Home</Link>
+            {!user && (
+              <Link href="/booking/lookup" className="hover:text-emerald-600">Find My Booking</Link>
+            )}
           </nav>
 
           {/* Desktop auth area */}
@@ -310,6 +313,7 @@ export default function Header() {
               </>
             ) : (
               <>
+                <Link href="/booking/lookup" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>Find My Booking</Link>
                 <Link href="/login" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>Log in</Link>
                 <Link href="/register" className="block px-2 py-2 text-sm font-medium text-emerald-600" onClick={() => setMenuOpen(false)}>Sign up</Link>
               </>

@@ -80,6 +80,11 @@ export const tripApi = {
 
 export const bookingApi = {
   initiate: (data: object) => api.post("/bookings/initiate", data),
+  initiateGuest: (data: object) => api.post("/bookings/guest/initiate", data),
+  lookup: (reference: string, phone: string) =>
+    api.get(`/bookings/lookup?reference=${encodeURIComponent(reference)}&phone=${encodeURIComponent(phone)}`),
+  guestCancel: (reference: string, phone: string) =>
+    api.post("/bookings/guest/cancel", { reference, phone }),
   myBookings: () => api.get("/bookings/my-bookings"),
   ticket: (reference: string) => api.get(`/bookings/${reference}/ticket`),
   cancel: (reference: string) => api.post(`/bookings/${reference}/cancel`),
@@ -99,7 +104,8 @@ export const paymentApi = {
 export const conductorApi = {
   todayTrips: () => api.get("/conductor/trips/today"),
   manifest: (tripId: string) => api.get(`/conductor/trips/${tripId}/manifest`),
-  verify: (reference: string) => api.post(`/conductor/verify/${reference}`),
+  verify: (reference: string, seatNumber?: string) =>
+    api.post(`/conductor/verify/${reference}`, seatNumber ? { seatNumber } : undefined),
 };
 
 // ─── Admin ────────────────────────────────────────────────────────────────────

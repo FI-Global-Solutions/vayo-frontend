@@ -125,6 +125,13 @@ export interface BookingResponse {
   refund?: RefundSummary;
 }
 
+export interface PassengerInfo {
+  seatNumber: string;
+  passengerName: string;
+  passengerPhone?: string;
+  isPrimaryPassenger: boolean;
+}
+
 export interface TicketResponse {
   bookingId: string;
   bookingReference: string;
@@ -135,6 +142,8 @@ export interface TicketResponse {
   destination: string;
   departureTime: string;
   arrivalTime: string;
+  boardingStop?: string;
+  droppingStop?: string;
   operatorName: string;
   operatorPhone: string;
   busType: string;
@@ -145,6 +154,7 @@ export interface TicketResponse {
   totalAmount: number;
   paymentMethod: string;
   createdAt: string;
+  passengers?: PassengerInfo[];
   refund?: RefundSummary;
 }
 
@@ -175,12 +185,15 @@ export interface TripOperatorResponse {
 }
 
 export interface ManifestEntry {
-  bookingId: string;
   bookingReference: string;
+  seatNumber: string;
   passengerName: string;
-  passengerPhone: string;
-  seatNumbers: string[];
-  status: string;
+  passengerPhone?: string;
+  isPrimaryPassenger: boolean;
+  boardingStop?: string;
+  droppingStop?: string;
+  bookingStatus: string;
+  boardedAt?: string;
 }
 
 // ─── Conductor ────────────────────────────────────────────────────────────────
