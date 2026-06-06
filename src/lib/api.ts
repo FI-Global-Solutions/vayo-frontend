@@ -87,7 +87,8 @@ export const bookingApi = {
     api.post("/bookings/guest/cancel", { reference, phone }),
   myBookings: () => api.get("/bookings/my-bookings"),
   ticket: (reference: string) => api.get(`/bookings/${reference}/ticket`),
-  cancel: (reference: string) => api.post(`/bookings/${reference}/cancel`),
+  cancel: (reference: string, body?: { reason?: string; otherText?: string }) =>
+    api.post(`/bookings/${reference}/cancel`, body ?? null),
 };
 
 // ─── Payments ────────────────────────────────────────────────────────────────

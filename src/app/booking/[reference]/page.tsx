@@ -120,6 +120,10 @@ export default function TicketPage() {
   const [cancelMessage, setCancelMessage] = useState("");
   const [refundAfterCancel, setRefundAfterCancel] = useState<RefundSummary | null>(null);
 
+  // Cancellation reason
+  const [cancelReason, setCancelReason] = useState<string | null>(null);
+  const [cancelReasonOther, setCancelReasonOther] = useState("");
+
   // Estimated refund for dialog
   const [policyLoading, setPolicyLoading] = useState(false);
   const [estimatedRefund, setEstimatedRefund] = useState<number | null>(null);
@@ -137,6 +141,8 @@ export default function TicketPage() {
 
   const openCancelDialog = async () => {
     if (!ticket) return;
+    setCancelReason(null);
+    setCancelReasonOther("");
     setPolicyLoading(true);
     try {
       const r = await refundApi.getTripRefundPolicy(ticket.tripId);
@@ -157,7 +163,10 @@ export default function TicketPage() {
     if (!ticket) return;
     setCancelling(true);
     try {
-      const r = await bookingApi.cancel(reference);
+      const body = cancelReason
+        ? { reason: cancelReason, otherText: cancelReason === "OTHER" ? cancelReasonOther || undefined : undefined }
+        : undefined;
+      const r = await bookingApi.cancel(reference, body);
       const resp = r.data.data;
       const refundAmt = resp?.refundAmountRwf ?? estimatedRefund;
       setCancelMessage(
@@ -431,7 +440,56 @@ export default function TicketPage() {
         onConfirm={handleCancel}
         onCancel={() => setShowCancelDialog(false)}
         isLoading={cancelling}
-      />
+      >
+        <p className="text-xs text-slate-400 mb-2">Why are you cancelling? (optional)</p>
+        <div className="space-y-1.5">
+          {(
+            [
+              ["PLANS_CHANGED", "Plans changed"],
+              ["FOUND_ALTERNATIVE", "Found alternative transport"],
+              ["MEDICAL_EMERGENCY", "Medical / emergency"],
+              ["TRIP_DETAILS_CHANGED", "Trip details changed (time or price)"],
+              ["PRICE_TOO_HIGH", "Too expensive"],
+              ["OTHER", "Other"],
+            ] as [string, string][]
+          ).map(([value, label]) => (
+            <label key={value} className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="radio"
+                name="cancelReason"
+                value={value}
+                checked={cancelReason === value}
+                onChange={() => { setCancelReason(value); setCancelReasonOther(""); }}
+                className="accent-emerald-600"
+              />
+              <span className="text-sm text-slate-700">{label}</span>
+            </label>
+          ))}
+        </div>
+        {cancelReason === "OTHER" && (
+          <input
+            type="text"
+            placeholder="Please describe..."
+            value={cancelReasonOther}
+            onChange={(e) => setCancelReasonOther(e.target.value)}
+            className="mt-2 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            maxLength={200}
+          />
+        )}
+      </ConfirmDialog>
+
+      {/* Support nudge */}
+      <p className="mt-6 text-center text-sm text-slate-500">
+        Need help?{" "}
+        <a
+          href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-emerald-600 hover:underline font-medium"
+        >
+          Chat with us on WhatsApp →
+        </a>
+      </p>
     </div>
   );
 }

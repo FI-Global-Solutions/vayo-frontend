@@ -104,6 +104,21 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── Support strip ────────────────────────────────────────────────── */}
+      <section className="bg-emerald-50 py-8 border-t border-emerald-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
+          <span className="text-slate-600 text-sm">Need help with your booking?</span>
+          <a
+            href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+          >
+            Chat with us on WhatsApp →
+          </a>
+        </div>
+      </section>
+
       {/* ── Operator CTA ─────────────────────────────────────────────────── */}
       <section className="bg-slate-900 text-white py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-6">

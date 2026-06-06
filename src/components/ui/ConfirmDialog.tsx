@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { Loader2 } from "lucide-react";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
+  children?: React.ReactNode;
 }
 
 const VARIANT_STYLES: Record<Props["confirmVariant"], string> = {
@@ -20,7 +22,7 @@ const VARIANT_STYLES: Record<Props["confirmVariant"], string> = {
 
 export default function ConfirmDialog({
   isOpen, title, message, confirmLabel, confirmVariant,
-  onConfirm, onCancel, isLoading,
+  onConfirm, onCancel, isLoading, children,
 }: Props) {
   if (!isOpen) return null;
 
@@ -28,7 +30,8 @@ export default function ConfirmDialog({
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
         <h3 className="text-base font-bold text-slate-800 text-center mb-2">{title}</h3>
-        <p className="text-sm text-slate-500 text-center mb-6">{message}</p>
+        <p className="text-sm text-slate-500 text-center mb-4">{message}</p>
+        {children && <div className="mb-4">{children}</div>}
         <div className="flex gap-3">
           <button
             type="button"
