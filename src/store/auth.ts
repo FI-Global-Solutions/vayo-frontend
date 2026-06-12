@@ -24,12 +24,16 @@ export function getStoredToken(): string | null {
 export function saveAuth(token: string, user: AuthUser): void {
   localStorage.setItem("vayo_token", token);
   localStorage.setItem("vayo_user", JSON.stringify(user));
+  // Mirror user into a cookie so middleware can read operatorStatus on the edge.
+  // HttpOnly is intentionally NOT set — JS must be able to clear it on logout.
+  document.cookie = `vayo_user=${encodeURIComponent(JSON.stringify(user))}; path=/; SameSite=Lax`;
   window.dispatchEvent(new Event("vayo:auth"));
 }
 
 export function clearAuth(): void {
   localStorage.removeItem("vayo_token");
   localStorage.removeItem("vayo_user");
+  document.cookie = "vayo_user=; path=/; max-age=0; SameSite=Lax";
   window.dispatchEvent(new Event("vayo:auth"));
 }
 

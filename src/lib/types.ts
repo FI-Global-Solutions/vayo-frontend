@@ -2,6 +2,8 @@
 
 export type UserRole = "TRAVELER" | "OPERATOR_SUPER_ADMIN" | "OPERATOR_ADMIN" | "DISPATCHER" | "CONDUCTOR" | "ACCOUNTANT" | "ADMIN";
 
+export type OperatorStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "INFORMATION_REQUIRED" | "REJECTED";
+
 export interface AuthUser {
   id: string;
   firstName: string;
@@ -10,6 +12,7 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   mustResetPassword: boolean;
+  operatorStatus?: OperatorStatus;
 }
 
 export interface AuthResponse {
@@ -22,6 +25,7 @@ export interface AuthResponse {
   phone: string;
   role: UserRole;
   mustResetPassword: boolean;
+  operatorStatus?: OperatorStatus;
 }
 
 export interface StaffMember {
@@ -226,7 +230,7 @@ export interface OperatorAdminResponse {
   companyName: string;
   contactEmail: string;
   contactPhone: string;
-  status: "PENDING" | "ACTIVE" | "SUSPENDED";
+  status: OperatorStatus;
   commissionRate: number;
   createdAt: string;
 }
