@@ -43,8 +43,8 @@ export const authApi = {
   }) => api.post("/auth/register", data),
   verifyOtp: (phone: string, otp: string) =>
     api.post("/auth/verify-otp", { phone, otp }),
-  verifyLoginOtp: (phone: string, otp: string) =>
-    api.post("/auth/verify-login-otp", { phone, otp }),
+  verifyLoginOtp: (identifier: { phone?: string; email?: string }, otp: string) =>
+    api.post("/auth/verify-login-otp", { ...identifier, otp }),
   forgotPassword: (email: string) =>
     api.post("/auth/forgot-password", { email }),
   resetPassword: (token: string, newPassword: string) =>

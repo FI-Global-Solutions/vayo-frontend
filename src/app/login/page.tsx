@@ -40,6 +40,8 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>("form");
   const [pendingPhone, setPendingPhone] = useState("");
   const [maskedPhone, setMaskedPhone] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -89,11 +91,11 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(data.email.trim().toLowerCase(), data.password);
       if (res.status === 202) {
-        setPendingPhone(res.data.data.phone);
-        setMaskedPhone(res.data.data.maskedPhone);
+        setPendingEmail(res.data.data.email ?? "");
+        setMaskedEmail(res.data.data.maskedEmail ?? "");
         setOtp(["", "", "", "", "", ""]);
         setStep("otp");
-        toast.info("Verification code sent to your phone");
+        toast.info("Verification code sent to your email");
       } else {
         finishLogin(res.data.data as AuthResponse);
       }
@@ -131,7 +133,8 @@ export default function LoginPage() {
     if (code.length !== 6) { toast.error("Enter all 6 digits"); return; }
     setOtpLoading(true);
     try {
-      const res = await authApi.verifyLoginOtp(pendingPhone, code);
+      const identifier = pendingEmail ? { email: pendingEmail } : { phone: pendingPhone };
+      const res = await authApi.verifyLoginOtp(identifier, code);
       finishLogin(res.data.data as AuthResponse);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } } };
@@ -171,7 +174,10 @@ export default function LoginPage() {
             <VayoLogo height={64} transparent className="mb-2" />
             <h1 className="text-xl font-bold text-slate-800 mt-3">Verify it&apos;s you</h1>
             <p className="text-sm text-slate-500 mt-1">
-              We sent a 6-digit code to <span className="font-semibold text-slate-700">{maskedPhone}</span>
+              We sent a 6-digit code to{" "}
+              <span className="font-semibold text-slate-700">
+                {pendingEmail ? maskedEmail : maskedPhone}
+              </span>
             </p>
           </div>
 
