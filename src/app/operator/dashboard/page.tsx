@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Route, Bus, Calendar, Users, TrendingUp, ArrowRight, Clock, Banknote } from "lucide-react";
 import { operatorApi, payoutApi } from "@/lib/api";
 import { OperatorDashboardStats, UserRole, PayoutBalance } from "@/lib/types";
@@ -35,10 +36,18 @@ export default function OperatorDashboardPage() {
   const [balance, setBalance] = useState<PayoutBalance | null | "error">(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<UserRole | undefined>(undefined);
+  const router = useRouter();
 
   useEffect(() => {
-    const storedRole = getStoredUser()?.role as UserRole | undefined;
+    const user = getStoredUser();
+    const storedRole = user?.role as UserRole | undefined;
     setRole(storedRole);
+
+    // Gate: non-ACTIVE operators should not see the dashboard
+    if (user?.operatorStatus && user.operatorStatus !== "ACTIVE") {
+      router.replace("/operator/application/status");
+      return;
+    }
 
     operatorApi.dashboard()
       .then((r) => setStats(r.data.data))

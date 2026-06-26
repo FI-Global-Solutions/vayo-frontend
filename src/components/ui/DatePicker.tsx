@@ -4,7 +4,7 @@ import { DayPicker } from "react-day-picker";
 import { format, isToday, isTomorrow } from "date-fns";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import "react-day-picker/dist/style.css";
+import "react-day-picker/style.css";
 
 interface Props {
   value: string; // yyyy-MM-dd
@@ -80,43 +80,45 @@ export default function DatePicker({ value, onChange, minDate }: Props) {
             selected={selected}
             onSelect={handleSelect}
             disabled={{ before: minDate ?? new Date() }}
-            fromMonth={minDate ?? new Date()}
+            startMonth={minDate ?? new Date()}
             showOutsideDays={false}
             classNames={{
               months: "flex flex-col",
               month: "space-y-3",
-              caption: "flex justify-between items-center px-1 py-1",
+              month_caption: "flex justify-between items-center px-1 py-1",
               caption_label: "text-sm font-semibold text-slate-800",
               nav: "flex items-center gap-1",
-              nav_button: cn(
+              button_previous: cn(
                 "h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300",
                 "flex items-center justify-center transition-colors"
               ),
-              nav_button_previous: "",
-              nav_button_next: "",
-              table: "w-full border-collapse",
-              head_row: "flex mb-1",
-              head_cell: "w-9 text-center text-xs font-medium text-slate-400",
-              row: "flex w-full mt-1",
-              cell: cn(
+              button_next: cn(
+                "h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300",
+                "flex items-center justify-center transition-colors"
+              ),
+              month_grid: "w-full border-collapse",
+              weekdays: "flex mb-1",
+              weekday: "w-9 text-center text-xs font-medium text-slate-400",
+              week: "flex w-full mt-1",
+              day: cn(
                 "relative w-9 h-9 flex items-center justify-center text-sm",
                 "[&:has([aria-selected])]:rounded-lg [&:has([aria-selected])]:bg-emerald-500"
               ),
-              day: cn(
+              day_button: cn(
                 "h-9 w-9 rounded-lg flex items-center justify-center text-sm font-medium",
-                "hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer",
-                "aria-selected:bg-emerald-500 aria-selected:text-white aria-selected:hover:bg-emerald-600"
+                "hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer"
               ),
-              day_selected: "bg-emerald-500 text-white hover:bg-emerald-600 font-semibold",
-              day_today: "border border-emerald-300 text-emerald-700 font-semibold",
-              day_outside: "opacity-0 pointer-events-none",
-              day_disabled: "text-slate-200 cursor-not-allowed hover:bg-transparent",
-              day_range_middle: "",
-              day_hidden: "invisible",
+              selected: "bg-emerald-500 text-white hover:bg-emerald-600 font-semibold rounded-lg",
+              today: "border border-emerald-300 text-emerald-700 font-semibold",
+              outside: "opacity-0 pointer-events-none",
+              disabled: "text-slate-200 cursor-not-allowed hover:bg-transparent",
+              hidden: "invisible",
             }}
             components={{
-              IconLeft: () => <ChevronLeft className="h-4 w-4" />,
-              IconRight: () => <ChevronRight className="h-4 w-4" />,
+              Chevron: ({ orientation }) =>
+                orientation === "left"
+                  ? <ChevronLeft className="h-4 w-4" />
+                  : <ChevronRight className="h-4 w-4" />,
             }}
           />
 

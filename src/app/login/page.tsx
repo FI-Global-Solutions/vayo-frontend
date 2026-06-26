@@ -59,13 +59,24 @@ export default function LoginPage() {
       phone: d.phone,
       role: d.role,
       mustResetPassword: d.mustResetPassword,
+      operatorStatus: d.operatorStatus,
     });
     toast.success(`Welcome back, ${d.firstName}!`);
-    if (d.mustResetPassword) router.push("/account/password");
-    else if (d.role === "ADMIN") router.push("/admin/dashboard");
-    else if (["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(d.role)) router.push("/operator/dashboard");
-    else if (d.role === "CONDUCTOR") router.push("/conductor/trips");
-    else router.push("/");
+    if (d.mustResetPassword) {
+      router.push("/account/password");
+    } else if (d.role === "ADMIN") {
+      router.push("/admin/dashboard");
+    } else if (["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(d.role)) {
+      if (d.operatorStatus && d.operatorStatus !== "ACTIVE") {
+        router.push("/operator/application/status");
+      } else {
+        router.push("/operator/dashboard");
+      }
+    } else if (d.role === "CONDUCTOR") {
+      router.push("/conductor/trips");
+    } else {
+      router.push("/");
+    }
   };
 
   const onPhoneSubmit = async (data: PhoneFormData) => {

@@ -2,6 +2,8 @@
 
 export type UserRole = "TRAVELER" | "OPERATOR_SUPER_ADMIN" | "OPERATOR_ADMIN" | "DISPATCHER" | "CONDUCTOR" | "ACCOUNTANT" | "ADMIN";
 
+export type OperatorStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "INFORMATION_REQUIRED" | "REJECTED";
+
 export interface AuthUser {
   id: string;
   firstName: string;
@@ -10,6 +12,7 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   mustResetPassword: boolean;
+  operatorStatus?: OperatorStatus;
 }
 
 export interface AuthResponse {
@@ -22,6 +25,7 @@ export interface AuthResponse {
   phone: string;
   role: UserRole;
   mustResetPassword: boolean;
+  operatorStatus?: OperatorStatus;
 }
 
 export interface StaffMember {
@@ -226,7 +230,7 @@ export interface OperatorAdminResponse {
   companyName: string;
   contactEmail: string;
   contactPhone: string;
-  status: "PENDING" | "ACTIVE" | "SUSPENDED";
+  status: OperatorStatus;
   commissionRate: number;
   createdAt: string;
 }
@@ -461,6 +465,53 @@ export interface ReconciliationReport {
   totalProcessing: number;
   totalFailed: number;
   totalRejected: number;
+}
+
+// ─── Admin Notifications ──────────────────────────────────────────────────────
+
+export type AdminNotificationType =
+  | "OPERATOR_APPLIED"
+  | "OPERATOR_RESUBMITTED"
+  | "PAYOUT_REQUESTED"
+  | "REFUND_ESCALATED";
+
+export interface AdminNotification {
+  id: string;
+  type: AdminNotificationType;
+  referenceId: string | null;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+// ─── Operator RFA ─────────────────────────────────────────────────────────────
+
+export type OperatorHistoryAction =
+  | "SUBMITTED" | "RESUBMITTED" | "APPROVED" | "SUSPENDED"
+  | "RFA_SENT" | "REJECTED" | "REACTIVATED";
+
+export interface RfaResponse {
+  id: string;
+  message: string;
+  requiredItems: string[];
+  sentAt: string;
+  respondedAt: string | null;
+}
+
+export interface ApplicationHistoryItem {
+  id: string;
+  action: OperatorHistoryAction;
+  actorName: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface ApplicationStatusResponse {
+  status: OperatorStatus;
+  rfaCount: number;
+  latestRfa: RfaResponse | null;
+  canReapplyAfter: string | null;
+  history: ApplicationHistoryItem[];
 }
 
 // ─── API Wrapper ─────────────────────────────────────────────────────────────
