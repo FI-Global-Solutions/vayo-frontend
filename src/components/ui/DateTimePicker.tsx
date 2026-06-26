@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import { format, isValid } from "date-fns";
 import { CalendarDays, Clock, ChevronDown } from "lucide-react";
-import "react-day-picker/dist/style.css";
+import "react-day-picker/style.css";
 
 interface DateTimePickerProps {
   value: string; // ISO string "YYYY-MM-DDTHH:mm"
@@ -101,22 +101,21 @@ export function DateTimePicker({
                 root: "!m-0",
                 months: "flex flex-col",
                 month: "space-y-1",
-                caption: "flex justify-center items-center relative py-2",
+                month_caption: "flex justify-center items-center relative py-2",
                 caption_label: "text-sm font-semibold text-slate-800",
                 nav: "flex items-center",
-                nav_button: "h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 absolute",
-                nav_button_previous: "left-1",
-                nav_button_next: "right-1",
-                table: "w-full border-collapse",
-                head_row: "flex mb-1",
-                head_cell: "flex-1 text-xs font-medium text-slate-400 text-center py-1",
-                row: "flex",
-                cell: "flex-1 text-center",
-                day: "w-8 h-8 mx-auto rounded-lg text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors",
-                day_selected: "!bg-emerald-600 !text-white hover:!bg-emerald-700 font-semibold",
-                day_today: "font-bold text-emerald-600",
-                day_disabled: "opacity-30 cursor-not-allowed",
-                day_outside: "text-slate-300",
+                button_previous: "h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 absolute left-1",
+                button_next: "h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 absolute right-1",
+                month_grid: "w-full border-collapse",
+                weekdays: "flex mb-1",
+                weekday: "flex-1 text-xs font-medium text-slate-400 text-center py-1",
+                week: "flex",
+                day: "flex-1 text-center",
+                day_button: "w-8 h-8 mx-auto rounded-lg text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors",
+                selected: "!bg-emerald-600 !text-white hover:!bg-emerald-700 font-semibold rounded-lg",
+                today: "font-bold text-emerald-600",
+                disabled: "opacity-30 cursor-not-allowed",
+                outside: "text-slate-300",
               }}
             />
           </div>
@@ -132,6 +131,7 @@ export function DateTimePicker({
               <select
                 value={selectedHour}
                 onChange={(e) => handleHourChange(e.target.value)}
+                title="Hour"
                 className="flex-1 py-2 px-2 border border-slate-200 rounded-lg text-sm text-center bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none text-slate-800 font-medium"
               >
                 {HOURS.map((h) => (
@@ -143,6 +143,7 @@ export function DateTimePicker({
               <select
                 value={selectedMin}
                 onChange={(e) => handleMinChange(e.target.value)}
+                title="Minute"
                 className="flex-1 py-2 px-2 border border-slate-200 rounded-lg text-sm text-center bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 appearance-none text-slate-800 font-medium"
               >
                 {MINUTES.map((m) => (

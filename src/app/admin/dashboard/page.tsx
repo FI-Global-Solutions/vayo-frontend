@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Building2, Users, Route, Ticket, CheckCircle2,
@@ -225,7 +225,7 @@ function HistoryModal({ op, onClose }: { op: OperatorAdminResponse; onClose: () 
 
 // ── main page ─────────────────────────────────────────────────────────────────
 
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [operators, setOperators] = useState<OperatorAdminResponse[]>([]);
@@ -692,5 +692,13 @@ export default function AdminDashboardPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
