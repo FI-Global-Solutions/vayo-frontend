@@ -117,6 +117,16 @@ export const adminApi = {
     api.get(`/admin/operators?page=${page}&size=20${status ? `&status=${status}` : ""}`),
   approve: (operatorId: string) => api.patch(`/admin/operators/${operatorId}/approve`),
   suspend: (operatorId: string) => api.patch(`/admin/operators/${operatorId}/suspend`),
+  getPendingReview: () => api.get("/admin/operators/pending-review"),
+  sendRfa: (operatorId: string, message: string, requiredItems: string[]) =>
+    api.post(`/admin/operators/${operatorId}/request-information`, { message, requiredItems }),
+  rejectOperator: (operatorId: string, reason: string) =>
+    api.post(`/admin/operators/${operatorId}/reject`, { reason }),
+  getApplicationHistory: (operatorId: string) =>
+    api.get(`/admin/operators/${operatorId}/application-history`),
+  getUnreadCount: () => api.get("/admin/notifications/unread-count"),
+  getNotifications: () => api.get("/admin/notifications"),
+  markNotificationRead: (id: string) => api.post(`/admin/notifications/${id}/read`),
   operatorDocuments: (operatorId: string) =>
     api.get(`/admin/operators/${operatorId}/documents`),
   operatorBalance: (operatorId: string) =>
@@ -208,6 +218,11 @@ export const payoutApi = {
 // ─── Operator ─────────────────────────────────────────────────────────────────
 
 export const operatorApi = {
+  getApplicationStatus: () => api.get("/operator/application/status"),
+  resubmitApplication: (formData: FormData) =>
+    api.post("/operator/application/resubmit", formData, {
+      headers: { "Content-Type": undefined },
+    }),
   register: (formData: FormData) =>
     api.post("/operator/register", formData, {
       headers: { "Content-Type": undefined },
