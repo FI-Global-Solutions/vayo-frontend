@@ -1,5 +1,5 @@
 import SearchForm from "@/components/search/SearchForm";
-import { Shield, Smartphone, Clock, MapPin, Sparkles, Bell } from "lucide-react";
+import { Shield, Smartphone, Clock, MapPin, Sparkles, Bell, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
 const DESTINATIONS = [
@@ -126,18 +126,58 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Support strip ────────────────────────────────────────────────── */}
-      <section className="bg-emerald-50 py-8 border-t border-emerald-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
-          <span className="text-slate-600 text-sm">Need help with your booking?</span>
-          <a
-            href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-          >
-            Chat with us on WhatsApp →
-          </a>
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section id="faq" className="bg-white py-16 border-t border-slate-100">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-xl font-bold text-slate-800 mb-8 text-center">Frequently asked questions</h2>
+          <div className="space-y-3">
+            {[
+              {
+                q: "How do I pay for my ticket?",
+                a: "We accept MTN Mobile Money and Airtel Money. After selecting your seat you'll be prompted to enter your mobile number and confirm the payment on your phone.",
+              },
+              {
+                q: "Will I get a ticket confirmation?",
+                a: "Yes — as soon as your payment is confirmed you'll receive a QR-code ticket by SMS and email. Show it to the conductor when boarding; no printing needed.",
+              },
+              {
+                q: "Can I cancel or change my booking?",
+                a: "You can cancel your booking from the 'Find My Booking' page. Refunds are processed according to how far in advance you cancel — the closer to departure, the smaller the refund percentage.",
+              },
+              {
+                q: "What if the bus is cancelled?",
+                a: "If an operator cancels a trip, you automatically receive a full refund to your Mobile Money wallet within 24 hours.",
+              },
+              {
+                q: "Do I need an account to book?",
+                a: "No — you can book as a guest with just your phone number. Creating an account lets you view all your past bookings in one place.",
+              },
+              {
+                q: "I haven't received my ticket — what do I do?",
+                a: "Check your SMS and email spam folder first. If it's still missing, use the 'Find My Booking' page with your booking reference and phone number, or chat with us on WhatsApp.",
+              },
+            ].map(({ q, a }) => (
+              <details key={q} className="group bg-slate-50 border border-slate-100 rounded-xl overflow-hidden">
+                <summary className="flex items-center justify-between px-5 py-4 cursor-pointer list-none select-none">
+                  <span className="text-sm font-semibold text-slate-800 pr-4">{q}</span>
+                  <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0 transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <p className="px-5 pb-4 text-sm text-slate-500 leading-relaxed">{a}</p>
+              </details>
+            ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-500 mb-3">Still have a question?</p>
+            <a
+              href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+            >
+              Chat with us on WhatsApp →
+            </a>
+          </div>
         </div>
       </section>
 
@@ -158,6 +198,55 @@ export default function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* ── Footer ───────────────────────────────────────────────────────── */}
+      <footer className="bg-slate-950 text-slate-400 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+            {/* Brand */}
+            <div>
+              <p className="text-white font-bold text-lg mb-2">VAYO</p>
+              <p className="text-xs leading-relaxed">
+                Book bus tickets across East Africa. Real-time seats, Mobile Money payments, instant QR tickets.
+              </p>
+            </div>
+
+            {/* Travellers */}
+            <div>
+              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Travellers</p>
+              <ul className="space-y-2 text-xs">
+                <li><Link href="/search" className="hover:text-emerald-400 transition-colors">Search buses</Link></li>
+                <li><Link href="/booking/lookup" className="hover:text-emerald-400 transition-colors">Find my booking</Link></li>
+                <li><Link href="/#faq" className="hover:text-emerald-400 transition-colors">FAQ</Link></li>
+                <li>
+                  <a
+                    href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-emerald-400 transition-colors"
+                  >
+                    WhatsApp support
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Operators */}
+            <div>
+              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Operators</p>
+              <ul className="space-y-2 text-xs">
+                <li><Link href="/operator/register" className="hover:text-emerald-400 transition-colors">Register your company</Link></li>
+                <li><Link href="/login" className="hover:text-emerald-400 transition-colors">Operator login</Link></li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+            <p>© {new Date().getFullYear()} VAYO. All rights reserved.</p>
+            <p>Built for East Africa 🌍</p>
+          </div>
+        </div>
+      </footer>
     </>
   );
 }

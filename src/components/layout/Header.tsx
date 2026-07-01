@@ -168,14 +168,7 @@ export default function Header() {
             {!user && (
               <Link href="/booking/lookup" className="hover:text-emerald-600">Find My Booking</Link>
             )}
-            <a
-              href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-emerald-600"
-            >
-              Help
-            </a>
+            <Link href="/#faq" className="hover:text-emerald-600">FAQ</Link>
           </nav>
 
           {/* Desktop auth area */}
@@ -475,15 +468,7 @@ export default function Header() {
                     Platform Config
                   </Link>
                 )}
-                <a
-                  href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block px-2 py-2 text-sm text-slate-700"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Help (WhatsApp)
-                </a>
+                <Link href="/#faq" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>FAQ</Link>
                 <button type="button" onClick={handleLogout} className="flex items-center gap-2 w-full px-2 py-2 text-sm text-red-500 mt-1">
                   <LogOut className="h-4 w-4" />
                   Log out
@@ -494,15 +479,7 @@ export default function Header() {
                 <Link href="/booking/lookup" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>Find My Booking</Link>
                 <Link href="/login" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>Log in</Link>
                 <Link href="/register" className="block px-2 py-2 text-sm font-medium text-emerald-600" onClick={() => setMenuOpen(false)}>Sign up</Link>
-                <a
-                  href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block px-2 py-2 text-sm text-slate-700"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Help (WhatsApp)
-                </a>
+                <Link href="/#faq" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>FAQ</Link>
               </>
             )}
           </div>

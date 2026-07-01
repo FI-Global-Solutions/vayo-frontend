@@ -105,7 +105,10 @@ export default function CityCombobox({
           {/* Options */}
           <div className="max-h-52 overflow-y-auto py-1.5">
             {filtered.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-4">No cities found</p>
+              <div className="text-center py-5 px-3">
+                <p className="text-sm font-medium text-slate-500">No routes yet</p>
+                <p className="text-xs text-slate-400 mt-1">We're onboarding operators — check back soon.</p>
+              </div>
             ) : (
               filtered.map((city) => (
                 <button
