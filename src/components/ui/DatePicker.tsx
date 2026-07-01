@@ -73,62 +73,83 @@ export default function DatePicker({ value, onChange, minDate }: Props) {
 
       {/* Calendar dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 animate-in fade-in-0 zoom-in-95 duration-150 rdp-custom">
+        <div className="absolute z-50 mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl p-4 animate-in fade-in-0 zoom-in-95 duration-150 rdp-custom min-w-[308px]">
           <style>{`
             .rdp-custom .rdp-root {
               --rdp-accent-color: #10b981;
               --rdp-accent-background-color: #d1fae5;
-              --rdp-day-height: 36px;
-              --rdp-day-width: 36px;
+              --rdp-day-height: 38px;
+              --rdp-day-width: 38px;
               --rdp-day_button-height: 34px;
               --rdp-day_button-width: 34px;
               --rdp-day_button-border-radius: 8px;
               --rdp-today-color: #059669;
+              --rdp-nav_button-width: 32px;
+              --rdp-nav_button-height: 32px;
+              --rdp-nav-height: 40px;
             }
             .rdp-custom .rdp-month_caption {
-              font-size: 0.875rem;
-              font-weight: 600;
+              font-size: 0.9375rem;
+              font-weight: 700;
               color: #1e293b;
+              padding-bottom: 4px;
             }
             .rdp-custom .rdp-weekday {
-              font-size: 0.7rem;
-              font-weight: 500;
+              font-size: 0.6875rem;
+              font-weight: 600;
               color: #94a3b8;
               opacity: 1;
+              width: 38px;
+              text-align: center;
             }
             .rdp-custom .rdp-day_button {
               font-size: 0.8125rem;
               font-weight: 500;
-              color: #334155;
+              color: #1e293b;
+              width: 34px;
+              height: 34px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
             }
             .rdp-custom .rdp-day_button:hover:not(:disabled) {
               background-color: #ecfdf5;
               color: #059669;
             }
             .rdp-custom .rdp-selected .rdp-day_button {
-              background-color: #10b981;
-              color: white;
-              font-weight: 600;
-              border-color: #10b981;
+              background-color: #10b981 !important;
+              color: white !important;
+              font-weight: 700;
+              border-color: #10b981 !important;
+            }
+            .rdp-custom .rdp-today:not(.rdp-selected) .rdp-day_button {
+              color: #059669;
+              font-weight: 700;
+              border: 2px solid #6ee7b7;
             }
             .rdp-custom .rdp-button_previous,
             .rdp-custom .rdp-button_next {
-              width: 28px;
-              height: 28px;
               border: 1px solid #e2e8f0;
               border-radius: 8px;
               background: white;
               color: #64748b;
+              display: flex;
+              align-items: center;
+              justify-content: center;
             }
-            .rdp-custom .rdp-button_previous:hover,
-            .rdp-custom .rdp-button_next:hover {
+            .rdp-custom .rdp-button_previous:hover:not(:disabled),
+            .rdp-custom .rdp-button_next:hover:not(:disabled) {
               background: #ecfdf5;
               border-color: #6ee7b7;
               color: #059669;
             }
             .rdp-custom .rdp-disabled .rdp-day_button {
-              color: #cbd5e1;
+              color: #cbd5e1 !important;
               cursor: not-allowed;
+              background: none !important;
+            }
+            .rdp-custom .rdp-outside {
+              visibility: hidden;
             }
           `}</style>
           <DayPicker
