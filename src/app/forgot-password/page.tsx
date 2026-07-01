@@ -47,15 +47,6 @@ export default function ForgotPasswordPage() {
               </p>
               <p className="text-xs text-slate-400 mb-6">The link expires in 15 minutes.</p>
 
-              {/* Dev helper — shows in dev mode */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5 text-left">
-                <p className="text-xs font-semibold text-amber-700 mb-1">🔧 Local dev only</p>
-                <p className="text-xs text-amber-600">
-                  Check the Spring Boot console log for the reset token — look for{" "}
-                  <code className="bg-amber-100 px-1 rounded">PASSWORD RESET TOKEN</code>
-                </p>
-              </div>
-
               <Link
                 href="/login"
                 className="inline-flex items-center gap-2 text-sm text-emerald-600 font-medium hover:underline"
