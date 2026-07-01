@@ -1,14 +1,14 @@
 import SearchForm from "@/components/search/SearchForm";
-import { Bus, Shield, Smartphone, Clock } from "lucide-react";
+import { Shield, Smartphone, Clock, MapPin, Sparkles, Bell } from "lucide-react";
 import Link from "next/link";
 
-const POPULAR_ROUTES = [
-  { from: "Kigali", to: "Kampala", price: "From 8,000 RWF", duration: "8h" },
-  { from: "Kigali", to: "Nairobi", price: "From 15,000 RWF", duration: "14h" },
-  { from: "Kigali", to: "Butare", price: "From 2,500 RWF", duration: "2h 30m" },
-  { from: "Kigali", to: "Gisenyi", price: "From 3,000 RWF", duration: "3h" },
-  { from: "Kigali", to: "Dar es Salaam", price: "From 20,000 RWF", duration: "22h" },
-  { from: "Kigali", to: "Bujumbura", price: "From 5,000 RWF", duration: "5h" },
+const DESTINATIONS = [
+  { city: "Kampala", country: "Uganda", emoji: "🇺🇬" },
+  { city: "Nairobi", country: "Kenya", emoji: "🇰🇪" },
+  { city: "Bujumbura", country: "Burundi", emoji: "🇧🇮" },
+  { city: "Dar es Salaam", country: "Tanzania", emoji: "🇹🇿" },
+  { city: "Butare", country: "Rwanda", emoji: "🇷🇼" },
+  { city: "Gisenyi", country: "Rwanda", emoji: "🇷🇼" },
 ];
 
 const FEATURES = [
@@ -60,29 +60,51 @@ export default function HomePage() {
       {/* ── Spacer for overlapping card ────────────────────────────────── */}
       <div className="h-20 sm:h-20 bg-slate-50" />
 
-      {/* ── Popular Routes ───────────────────────────────────────────────── */}
+      {/* ── Where We Go ──────────────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-xl font-bold text-slate-800 mb-6">Popular Routes</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {POPULAR_ROUTES.map((route) => (
-            <Link
-              key={`${route.from}-${route.to}`}
-              href={`/search?origin=${encodeURIComponent(route.from)}&destination=${encodeURIComponent(route.to)}&date=${new Date(Date.now() + 86400000).toISOString().split("T")[0]}`}
-              className="bg-white border border-slate-200 rounded-xl p-4 hover:border-emerald-400 hover:shadow-md group transition-all"
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 leading-tight">Where we go</h2>
+            <p className="text-xs text-slate-500">Destinations served by our operators</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-6">
+          {DESTINATIONS.map((dest) => (
+            <div
+              key={dest.city}
+              className="bg-white border border-slate-100 rounded-2xl p-4 text-center shadow-sm select-none"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                    <span>{route.from}</span>
-                    <span className="text-slate-300">→</span>
-                    <span>{route.to}</span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">{route.duration} · {route.price}</p>
-                </div>
-                <Bus className="h-5 w-5 text-slate-300 group-hover:text-emerald-500 transition-colors" />
-              </div>
-            </Link>
+              <span className="text-3xl mb-2 block">{dest.emoji}</span>
+              <p className="text-sm font-semibold text-slate-800">{dest.city}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{dest.country}</p>
+            </div>
           ))}
+        </div>
+
+        {/* Coming soon banner */}
+        <div className="mt-6 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-emerald-700">
+            <Sparkles className="h-5 w-5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-emerald-800">More routes launching soon</p>
+              <p className="text-xs text-emerald-600 mt-0.5">
+                We're onboarding bus operators across East Africa. More cities and routes will appear here as operators join.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:ml-auto flex-shrink-0">
+            <Bell className="h-4 w-4 text-slate-400" />
+            <Link
+              href="/operator/register"
+              className="text-xs text-emerald-700 font-semibold hover:underline whitespace-nowrap"
+            >
+              Add your routes →
+            </Link>
+          </div>
         </div>
       </section>
 

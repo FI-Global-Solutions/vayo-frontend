@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowDownUp, Bus, SlidersHorizontal, X } from "lucide-react";
+import { ArrowDownUp, Bus, SlidersHorizontal, X, CalendarX, MapPin } from "lucide-react";
+import Link from "next/link";
 import SearchForm from "@/components/search/SearchForm";
 import TripCard from "@/components/trips/TripCard";
 import { searchApi } from "@/lib/api";
@@ -230,24 +231,61 @@ function SearchPage() {
           <button type="button" onClick={fetchTrips} className="text-sm text-emerald-600 underline">Try again</button>
         </div>
       ) : sorted.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-slate-200">
-          <Bus className="h-12 w-12 text-slate-200 mx-auto mb-4" />
-          <h3 className="font-semibold text-slate-700 mb-1">
-            {activeFilterCount > 0 ? "No buses match your filters" : "No buses found"}
-          </h3>
-          <p className="text-sm text-slate-400 mb-4">
-            {activeFilterCount > 0
-              ? "Try adjusting or clearing your filters."
-              : `No buses available for this route on ${formattedDate}.`}
-          </p>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-sm text-emerald-600 underline"
-            >
-              Clear filters
-            </button>
+        <div className="text-center py-20 bg-white rounded-2xl border border-slate-200 px-6">
+          {activeFilterCount > 0 ? (
+            <>
+              <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-5">
+                <SlidersHorizontal className="h-9 w-9 text-amber-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">No buses match your filters</h3>
+              <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto">
+                Your current filters are hiding all available buses. Try loosening them up.
+              </p>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+              >
+                <X className="h-4 w-4" /> Clear all filters
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-5 relative">
+                <Bus className="h-9 w-9 text-slate-300" />
+                <div className="absolute -top-1 -right-1 w-7 h-7 bg-red-100 rounded-full flex items-center justify-center">
+                  <CalendarX className="h-4 w-4 text-red-400" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">No trips found</h3>
+              <p className="text-sm text-slate-500 mb-1 max-w-sm mx-auto">
+                We couldn't find any buses from{" "}
+                <span className="font-semibold text-slate-700">{origin}</span> to{" "}
+                <span className="font-semibold text-slate-700">{destination}</span> on{" "}
+                <span className="font-semibold text-slate-700">{formattedDate}</span>.
+              </p>
+              <p className="text-xs text-slate-400 mb-8">
+                This route may not be available yet, or all seats are sold out.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+                    window.location.href = `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${tomorrow}`;
+                  }}
+                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  <CalendarX className="h-4 w-4" /> Try tomorrow
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  <MapPin className="h-4 w-4" /> Change route
+                </Link>
+              </div>
+            </>
           )}
         </div>
       ) : (

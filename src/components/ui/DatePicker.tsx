@@ -4,7 +4,6 @@ import { DayPicker } from "react-day-picker";
 import { format, isToday, isTomorrow } from "date-fns";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import "react-day-picker/style.css";
 
 interface Props {
   value: string; // yyyy-MM-dd
@@ -74,46 +73,70 @@ export default function DatePicker({ value, onChange, minDate }: Props) {
 
       {/* Calendar dropdown */}
       {open && (
-        <div className="absolute z-50 mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 animate-in fade-in-0 zoom-in-95 duration-150">
+        <div className="absolute z-50 mt-1.5 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 animate-in fade-in-0 zoom-in-95 duration-150 rdp-custom">
+          <style>{`
+            .rdp-custom .rdp-root {
+              --rdp-accent-color: #10b981;
+              --rdp-accent-background-color: #d1fae5;
+              --rdp-day-height: 36px;
+              --rdp-day-width: 36px;
+              --rdp-day_button-height: 34px;
+              --rdp-day_button-width: 34px;
+              --rdp-day_button-border-radius: 8px;
+              --rdp-today-color: #059669;
+            }
+            .rdp-custom .rdp-month_caption {
+              font-size: 0.875rem;
+              font-weight: 600;
+              color: #1e293b;
+            }
+            .rdp-custom .rdp-weekday {
+              font-size: 0.7rem;
+              font-weight: 500;
+              color: #94a3b8;
+              opacity: 1;
+            }
+            .rdp-custom .rdp-day_button {
+              font-size: 0.8125rem;
+              font-weight: 500;
+              color: #334155;
+            }
+            .rdp-custom .rdp-day_button:hover:not(:disabled) {
+              background-color: #ecfdf5;
+              color: #059669;
+            }
+            .rdp-custom .rdp-selected .rdp-day_button {
+              background-color: #10b981;
+              color: white;
+              font-weight: 600;
+              border-color: #10b981;
+            }
+            .rdp-custom .rdp-button_previous,
+            .rdp-custom .rdp-button_next {
+              width: 28px;
+              height: 28px;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              background: white;
+              color: #64748b;
+            }
+            .rdp-custom .rdp-button_previous:hover,
+            .rdp-custom .rdp-button_next:hover {
+              background: #ecfdf5;
+              border-color: #6ee7b7;
+              color: #059669;
+            }
+            .rdp-custom .rdp-disabled .rdp-day_button {
+              color: #cbd5e1;
+              cursor: not-allowed;
+            }
+          `}</style>
           <DayPicker
             mode="single"
             selected={selected}
             onSelect={handleSelect}
             disabled={{ before: minDate ?? new Date() }}
-            startMonth={minDate ?? new Date()}
             showOutsideDays={false}
-            classNames={{
-              months: "flex flex-col",
-              month: "space-y-3",
-              month_caption: "flex justify-between items-center px-1 py-1",
-              caption_label: "text-sm font-semibold text-slate-800",
-              nav: "flex items-center gap-1",
-              button_previous: cn(
-                "h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300",
-                "flex items-center justify-center transition-colors"
-              ),
-              button_next: cn(
-                "h-7 w-7 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300",
-                "flex items-center justify-center transition-colors"
-              ),
-              month_grid: "w-full border-collapse",
-              weekdays: "flex mb-1",
-              weekday: "w-9 text-center text-xs font-medium text-slate-400",
-              week: "flex w-full mt-1",
-              day: cn(
-                "relative w-9 h-9 flex items-center justify-center text-sm",
-                "[&:has([aria-selected])]:rounded-lg [&:has([aria-selected])]:bg-emerald-500"
-              ),
-              day_button: cn(
-                "h-9 w-9 rounded-lg flex items-center justify-center text-sm font-medium",
-                "hover:bg-emerald-50 hover:text-emerald-700 transition-colors cursor-pointer"
-              ),
-              selected: "bg-emerald-500 text-white hover:bg-emerald-600 font-semibold rounded-lg",
-              today: "border border-emerald-300 text-emerald-700 font-semibold",
-              outside: "opacity-0 pointer-events-none",
-              disabled: "text-slate-200 cursor-not-allowed hover:bg-transparent",
-              hidden: "invisible",
-            }}
             components={{
               Chevron: ({ orientation }) =>
                 orientation === "left"
