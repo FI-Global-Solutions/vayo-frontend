@@ -131,7 +131,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-3 text-center">
           <span className="text-slate-600 text-sm">Need help with your booking?</span>
           <a
-            href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+            href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"

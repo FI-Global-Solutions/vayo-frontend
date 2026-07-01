@@ -169,7 +169,7 @@ export default function Header() {
               <Link href="/booking/lookup" className="hover:text-emerald-600">Find My Booking</Link>
             )}
             <a
-              href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+              href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-emerald-600"
@@ -476,7 +476,7 @@ export default function Header() {
                   </Link>
                 )}
                 <a
-                  href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+                  href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block px-2 py-2 text-sm text-slate-700"
@@ -495,7 +495,7 @@ export default function Header() {
                 <Link href="/login" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>Log in</Link>
                 <Link href="/register" className="block px-2 py-2 text-sm font-medium text-emerald-600" onClick={() => setMenuOpen(false)}>Sign up</Link>
                 <a
-                  href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+                  href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block px-2 py-2 text-sm text-slate-700"

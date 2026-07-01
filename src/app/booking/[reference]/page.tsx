@@ -482,7 +482,7 @@ export default function TicketPage() {
       <p className="mt-6 text-center text-sm text-slate-500">
         Need help?{" "}
         <a
-          href="https://wa.me/250784673536?text=Hi%2C+I+need+help+with+my+booking"
+          href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
           target="_blank"
           rel="noopener noreferrer"
           className="text-emerald-600 hover:underline font-medium"
