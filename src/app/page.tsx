@@ -199,54 +199,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="bg-slate-950 text-slate-400 py-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
-            {/* Brand */}
-            <div>
-              <p className="text-white font-bold text-lg mb-2">VAYO</p>
-              <p className="text-xs leading-relaxed">
-                Book bus tickets across East Africa. Real-time seats, Mobile Money payments, instant QR tickets.
-              </p>
-            </div>
-
-            {/* Travellers */}
-            <div>
-              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Travellers</p>
-              <ul className="space-y-2 text-xs">
-                <li><Link href="/search" className="hover:text-emerald-400 transition-colors">Search buses</Link></li>
-                <li><Link href="/booking/lookup" className="hover:text-emerald-400 transition-colors">Find my booking</Link></li>
-                <li><Link href="/#faq" className="hover:text-emerald-400 transition-colors">FAQ</Link></li>
-                <li>
-                  <a
-                    href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-emerald-400 transition-colors"
-                  >
-                    WhatsApp support
-                  </a>
-                </li>
-              </ul>
-            </div>
-
-            {/* Operators */}
-            <div>
-              <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Operators</p>
-              <ul className="space-y-2 text-xs">
-                <li><Link href="/operator/register" className="hover:text-emerald-400 transition-colors">Register your company</Link></li>
-                <li><Link href="/login" className="hover:text-emerald-400 transition-colors">Operator login</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-            <p>© {new Date().getFullYear()} VAYO. All rights reserved.</p>
-            <p>Built for East Africa 🌍</p>
-          </div>
-        </div>
-      </footer>
     </>
   );
 }
