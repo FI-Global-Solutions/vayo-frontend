@@ -7,6 +7,7 @@ import { z } from "zod";
 import {
   ChevronRight, Phone, Mail, User, XCircle, Loader2,
   CreditCard, AlertCircle, CheckCircle, LogIn, UserPlus, UserCheck,
+  MapPin, Ticket, MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { bookingApi, paymentApi, refundApi } from "@/lib/api";
@@ -523,33 +524,101 @@ function CheckoutPage() {
 
   if (step === "confirmed" && bookingReference) {
     return (
-      <div className="max-w-lg mx-auto px-4 sm:px-6 py-8">
-        <div className="text-center py-6">
-          <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-9 w-9 text-emerald-500" />
+      <div className="max-w-lg mx-auto px-4 sm:px-6 py-10">
+
+        {/* Success hero */}
+        <div className="text-center mb-8">
+          <div className="relative inline-flex items-center justify-center w-20 h-20 bg-emerald-500 rounded-full mb-5 shadow-lg shadow-emerald-200">
+            <CheckCircle className="h-10 w-10 text-white" />
           </div>
-          <h2 className="font-bold text-slate-800 text-xl mb-1">Booking confirmed!</h2>
-          <p className="text-sm text-slate-500">Reference: <span className="font-mono font-semibold text-slate-700">{bookingReference}</span></p>
-          {confirmedPhone && (
-            <p className="text-sm text-slate-500 mt-1">
-              Your ticket has been sent to <span className="font-medium">{confirmedPhone}</span>
-            </p>
-          )}
-        </div>
-        <Link href={`/booking/lookup?reference=${encodeURIComponent(bookingReference)}`}
-          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl text-sm mt-2 mb-6">
-          View Ticket
-        </Link>
-        <div className="border border-slate-200 rounded-xl p-5 bg-slate-50">
-          <p className="text-sm font-semibold text-slate-700 mb-1">Want to save your booking history?</p>
-          <p className="text-xs text-slate-500 mb-3">
-            Create an account with your phone number{confirmedPhone ? ` ${confirmedPhone}` : ""}. Your booking will be linked automatically.
+          <h1 className="text-2xl font-extrabold text-slate-800 mb-2">You&apos;re all set! 🎉</h1>
+          <p className="text-slate-500 text-sm max-w-xs mx-auto">
+            Your seat is confirmed and your ticket is on its way.
           </p>
-          <Link href={`/register${confirmedPhone ? `?phone=${encodeURIComponent(confirmedPhone)}` : ""}`}
-            className="inline-flex items-center gap-2 bg-white border border-slate-300 hover:border-emerald-500 hover:text-emerald-600 text-slate-700 font-medium px-4 py-2.5 rounded-lg text-sm transition-colors">
-            <UserPlus className="h-4 w-4" />
-            Create a VAYO account
-          </Link>
+        </div>
+
+        {/* Ticket summary card */}
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-4">
+          {/* Top stripe */}
+          <div className="bg-emerald-600 px-5 py-3 flex items-center justify-between">
+            <span className="text-white text-xs font-semibold uppercase tracking-wider">Booking Reference</span>
+            <span className="font-mono font-bold text-white text-sm">{bookingReference}</span>
+          </div>
+
+          <div className="px-5 py-4 space-y-3">
+            {/* Route */}
+            <div className="flex items-center gap-2 text-slate-700">
+              <MapPin className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+              <span className="font-semibold text-sm">
+                {originStopName || "—"} → {destinationStopName || "—"}
+              </span>
+            </div>
+
+            {/* Seats */}
+            <div className="flex items-center gap-2 text-slate-600">
+              <Ticket className="h-4 w-4 text-slate-400 flex-shrink-0" />
+              <span className="text-sm">
+                Seat{seats.length > 1 ? "s" : ""}{" "}
+                <span className="font-semibold">{seats.join(", ")}</span>
+              </span>
+            </div>
+
+            {/* Amount */}
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-500">Total paid</span>
+              <span className="text-base font-bold text-slate-800">{total.toLocaleString()} RWF</span>
+            </div>
+          </div>
+
+          {/* Dashed divider */}
+          <div className="border-t border-dashed border-slate-200 mx-5" />
+
+          {/* Delivery notice */}
+          <div className="px-5 py-3">
+            {confirmedPhone ? (
+              <p className="text-xs text-slate-500 text-center">
+                QR ticket sent to <span className="font-semibold text-slate-700">{confirmedPhone}</span> via SMS &amp; email
+              </p>
+            ) : (
+              <p className="text-xs text-slate-500 text-center">QR ticket sent via SMS &amp; email</p>
+            )}
+          </div>
+        </div>
+
+        {/* View ticket CTA */}
+        <Link
+          href={`/booking/lookup?reference=${encodeURIComponent(bookingReference)}`}
+          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl text-sm transition-colors mb-3"
+        >
+          <Ticket className="h-4 w-4" /> View My Ticket
+        </Link>
+
+        {/* Create account nudge — only for guests */}
+        {!isLoggedIn && (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-3">
+            <p className="text-sm font-semibold text-slate-700 mb-1">Save your booking history</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Create a free account and all your bookings will be linked automatically.
+            </p>
+            <Link
+              href={`/register${confirmedPhone ? `?phone=${encodeURIComponent(confirmedPhone)}` : ""}`}
+              className="inline-flex items-center gap-2 bg-white border border-slate-300 hover:border-emerald-400 hover:text-emerald-600 text-slate-700 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+            >
+              <UserPlus className="h-4 w-4" /> Create a VAYO account
+            </Link>
+          </div>
+        )}
+
+        {/* Help */}
+        <div className="text-center">
+          <a
+            href="https://wa.me/250784673536?text=Hello+VAYO+Support%2C%0A%0AI+need+assistance+with+my+booking.+Could+you+please+help+me%3F%0A%0AThank+you."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-emerald-600 transition-colors"
+          >
+            <MessageCircle className="h-3.5 w-3.5" /> Need help? Chat with us on WhatsApp
+          </a>
         </div>
       </div>
     );
