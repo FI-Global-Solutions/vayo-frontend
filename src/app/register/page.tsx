@@ -3,12 +3,13 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { User, Mail, Lock, Eye, EyeOff, MessageSquare, RefreshCw } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, MessageSquare, RefreshCw, ChevronDown } from "lucide-react";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { saveAuth } from "@/store/auth";
 import { AuthResponse } from "@/lib/types";
+import { COUNTRIES, type Country } from "@/lib/countries";
 
 type FormData = {
   firstName: string;
@@ -18,12 +19,6 @@ type FormData = {
   password: string;
 };
 
-function validateRwandaPhone(value: string) {
-  if (!/^\d{9}$/.test(value)) return "Enter 9 digits (e.g. 788000000)";
-  if (!/^(79|78|73|72)/.test(value)) return "Must start with 78, 79, 73, or 72";
-  return true;
-}
-
 export default function RegisterPage() {
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState<"form" | "otp">("form");
@@ -32,6 +27,8 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
   const {
@@ -43,8 +40,7 @@ export default function RegisterPage() {
   } = useForm<FormData>({ mode: "onChange" });
 
   const onSubmit = async (data: FormData) => {
-    // Combine prefix with local digits
-    const fullPhone = "+250" + data.phone;
+    const fullPhone = country.code + data.phone;
     try {
       const res = await authApi.register({ ...data, phone: fullPhone });
       const d = res.data.data as { phone: string; maskedPhone: string };
@@ -117,7 +113,7 @@ export default function RegisterPage() {
     setResending(true);
     try {
       const data = getValues();
-      const fullPhone = "+250" + data.phone;
+      const fullPhone = country.code + data.phone;
       await authApi.register({ ...data, phone: fullPhone });
       setOtp(["", "", "", "", "", ""]);
       otpRefs.current[0]?.focus();
@@ -139,9 +135,12 @@ export default function RegisterPage() {
             <div className="mt-4 w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <MessageSquare className="h-7 w-7 text-emerald-600" />
             </div>
-            <h1 className="text-xl font-bold text-slate-800">Verify your phone</h1>
+            <h1 className="text-xl font-bold text-slate-800">Verify your account</h1>
             <p className="text-sm text-slate-500 mt-1">
               We sent a 6-digit code to <span className="font-semibold text-slate-700">{maskedPhone}</span>
+              {getValues("email") && (
+                <span className="block mt-0.5 text-xs text-slate-400">Also sent to your email</span>
+              )}
             </p>
           </div>
 
@@ -261,20 +260,49 @@ export default function RegisterPage() {
                 Phone number
                 <span className="text-red-500 ml-0.5">*</span>
               </label>
+              {/* Dropdown sits outside overflow-hidden wrapper */}
+              <div className="relative">
+                {countryOpen && (
+                  <div className="absolute z-50 top-0 left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg w-52 max-h-64 overflow-y-auto">
+                    {COUNTRIES.map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => { setCountry(c); setCountryOpen(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-emerald-50 transition-colors ${country.code === c.code ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-slate-700"}`}
+                      >
+                        <span className="text-base">{c.flag}</span>
+                        <span className="flex-1 text-left">{c.name}</span>
+                        <span className="text-xs text-slate-400">{c.code}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${errors.phone ? "border-red-400" : "border-slate-200"}`}>
-                {/* Rwanda flag + prefix */}
-                <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 shrink-0">
-                  <span className="text-base leading-none">🇷🇼</span>
-                  <span className="text-sm font-medium text-slate-600">+250</span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setCountryOpen((o) => !o)}
+                  className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 hover:bg-slate-100 transition-colors shrink-0"
+                >
+                  <span className="text-base leading-none">{country.flag}</span>
+                  <span className="text-sm font-medium text-slate-600">{country.code}</span>
+                  <ChevronDown className="h-3 w-3 text-slate-400" />
+                </button>
                 <input
-                  {...register("phone", { validate: validateRwandaPhone })}
+                  {...register("phone", {
+                    required: "Phone number is required",
+                    validate: (v) => {
+                      const digits = v.replace(/\D/g, "");
+                      if (digits.length !== country.digits) return `Enter ${country.digits} digits`;
+                      return true;
+                    },
+                  })}
                   type="tel"
                   inputMode="numeric"
-                  placeholder="788000000"
-                  maxLength={9}
+                  placeholder={country.hint}
+                  maxLength={country.digits}
                   onKeyDown={(e) => {
-                    // Allow: digits, backspace, delete, arrows, tab
                     if (!/^\d$/.test(e.key) && !["Backspace","Delete","ArrowLeft","ArrowRight","Tab"].includes(e.key)) {
                       e.preventDefault();
                     }
@@ -285,7 +313,7 @@ export default function RegisterPage() {
               {errors.phone ? (
                 <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>
               ) : (
-                <p className="text-xs text-slate-400 mt-1">MTN or Airtel Rwanda (78, 79, 73)</p>
+                <p className="text-xs text-slate-400 mt-1">{country.name} · {country.digits} digits after {country.code}</p>
               )}
             </div>
 

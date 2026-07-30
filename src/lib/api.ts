@@ -65,7 +65,23 @@ export const searchApi = {
     api.get<{ data: string[] }>(`/search/destinations?origin=${encodeURIComponent(origin)}`),
   trips: (origin: string, destination: string, date: string) =>
     api.get(`/search/trips?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${date}`),
+  availableDates: (origin: string, destination: string) =>
+    api.get<{ data: string[] }>(`/search/available-dates?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`),
+  connections: () => api.get<{ data: RouteConnection[] }>("/search/connections"),
 };
+
+export interface RouteConnection {
+  routeId: string;
+  origin: string;
+  destination: string;
+  boardStop: string;
+  dropStop: string;
+  boardStopId: string;
+  dropStopId: string;
+  distanceKm: number;
+  basePrice: number;
+  operatorName?: string;
+}
 
 // ─── Trips ───────────────────────────────────────────────────────────────────
 

@@ -64,8 +64,14 @@ export interface TripSearchResult {
   durationMinutes: number;
   price: number;
   availableSeats: number;
+  availableSeatsForSegment?: number | null;
   totalSeats: number;
   busType: "STANDARD" | "LUXURY" | "MINIBUS";
+  // Resolved when search matched via stops (not route origin/destination)
+  originStopId?: string | null;
+  destinationStopId?: string | null;
+  originStopName?: string | null;
+  destinationStopName?: string | null;
 }
 
 // ─── Seat Map ────────────────────────────────────────────────────────────────

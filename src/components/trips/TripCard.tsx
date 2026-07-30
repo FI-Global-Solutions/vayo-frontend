@@ -27,7 +27,17 @@ function seatAvailabilityColor(available: number, total: number): string {
 
 export default function TripCard({ trip, date }: { trip: TripSearchResult; date: string }) {
   const badge = busTypeBadge(trip.busType);
-  const seatColor = seatAvailabilityColor(trip.availableSeats, trip.totalSeats);
+  const displaySeats = trip.availableSeatsForSegment ?? trip.availableSeats;
+  const seatColor = seatAvailabilityColor(displaySeats, trip.totalSeats);
+
+  const tripHref = (() => {
+    const qs = new URLSearchParams({ date });
+    if (trip.originStopId) qs.set("originStopId", trip.originStopId);
+    if (trip.destinationStopId) qs.set("destinationStopId", trip.destinationStopId);
+    if (trip.originStopName) qs.set("originStopName", trip.originStopName);
+    if (trip.destinationStopName) qs.set("destinationStopName", trip.destinationStopName);
+    return `/trip/${trip.tripId}?${qs.toString()}`;
+  })();
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 hover:border-emerald-300 hover:shadow-md transition-all p-4 sm:p-5">
@@ -54,7 +64,7 @@ export default function TripCard({ trip, date }: { trip: TripSearchResult; date:
               <p className="text-xl font-bold text-slate-900">
                 {format(new Date(trip.departureTime), "HH:mm")}
               </p>
-              <p className="text-xs text-slate-400">{trip.origin}</p>
+              <p className="text-xs text-slate-400">{trip.originStopName ?? trip.origin}</p>
             </div>
 
             <div className="flex-1 flex flex-col items-center gap-1">
@@ -72,7 +82,7 @@ export default function TripCard({ trip, date }: { trip: TripSearchResult; date:
               <p className="text-xl font-bold text-slate-900">
                 {format(new Date(trip.arrivalTime), "HH:mm")}
               </p>
-              <p className="text-xs text-slate-400">{trip.destination}</p>
+              <p className="text-xs text-slate-400">{trip.destinationStopName ?? trip.destination}</p>
             </div>
           </div>
         </div>
@@ -84,7 +94,7 @@ export default function TripCard({ trip, date }: { trip: TripSearchResult; date:
         <div className="sm:text-right flex sm:flex-col flex-row sm:items-end items-center justify-between sm:gap-2">
           <div className={`flex items-center gap-1 text-xs font-medium ${seatColor}`}>
             <Users className="h-3.5 w-3.5" />
-            {trip.availableSeats} seats left
+            {displaySeats} seats left
           </div>
 
           <div className="sm:mt-1">
@@ -94,7 +104,7 @@ export default function TripCard({ trip, date }: { trip: TripSearchResult; date:
           </div>
 
           <Link
-            href={`/trip/${trip.tripId}?date=${date}`}
+            href={tripHref}
             className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-lg flex-shrink-0"
           >
             Select Seats

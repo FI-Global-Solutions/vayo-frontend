@@ -1,13 +1,13 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeftRight, Search } from "lucide-react";
 import { searchApi } from "@/lib/api";
 import CityCombobox from "@/components/ui/CityCombobox";
 import DatePicker from "@/components/ui/DatePicker";
 import { cn } from "@/lib/utils";
 
-export default function SearchForm() {
+function SearchFormInner() {
   const [origins, setOrigins] = useState<string[]>([]);
   const [destinations, setDestinations] = useState<string[]>([]);
   const [origin, setOrigin] = useState("");
@@ -15,16 +15,32 @@ export default function SearchForm() {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const params = useSearchParams();
 
-  // Default to tomorrow
+  // Pre-fill from URL params — supports both ?origin/destination (search page) and ?from/to (homepage)
+  const preFrom = params.get("origin") || params.get("from") || "";
+  const preTo   = params.get("destination") || params.get("to") || "";
+  const preDate = params.get("date") || "";
+
+  // Set date: use URL param if present, otherwise default to tomorrow
   useEffect(() => {
+    if (preDate) { setDate(preDate); return; }
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const yyyy = tomorrow.getFullYear();
     const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
     const dd = String(tomorrow.getDate()).padStart(2, "0");
     setDate(`${yyyy}-${mm}-${dd}`);
-  }, []);
+  }, [preDate]);
+
+  // Apply origin/destination pre-fill
+  useEffect(() => {
+    if (preFrom) setOrigin(preFrom);
+  }, [preFrom]);
+
+  useEffect(() => {
+    if (preTo) setDestination(preTo);
+  }, [preTo]);
 
   useEffect(() => {
     searchApi.origins()
@@ -40,9 +56,10 @@ export default function SearchForm() {
       if (destination && origin === destination) setDestination("");
     } else {
       setDestinations([]);
-      setDestination("");
+      // Only clear destination on manual clear, not on initial mount when pre-fill is coming
+      if (!preFrom) setDestination("");
     }
-  }, [origin]);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, [origin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const swap = () => {
     const tmp = origin;
@@ -173,5 +190,13 @@ export default function SearchForm() {
         </div>
       </div>
     </form>
+  );
+}
+
+export default function SearchForm() {
+  return (
+    <Suspense fallback={null}>
+      <SearchFormInner />
+    </Suspense>
   );
 }

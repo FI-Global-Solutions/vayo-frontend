@@ -21,6 +21,12 @@ function formatDisplay(dateStr: string): string {
 
 export default function DatePicker({ value, onChange, minDate }: Props) {
   const [open, setOpen] = useState(false);
+  const [month, setMonth] = useState<Date>(() => {
+    if (value) return new Date(value + "T00:00:00");
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  });
   const ref = useRef<HTMLDivElement>(null);
 
   const selected = value ? new Date(value + "T00:00:00") : undefined;
@@ -38,6 +44,7 @@ export default function DatePicker({ value, onChange, minDate }: Props) {
   const handleSelect = (day: Date | undefined) => {
     if (!day) return;
     onChange(format(day, "yyyy-MM-dd"));
+    setMonth(day);
     setOpen(false);
   };
 
@@ -156,6 +163,8 @@ export default function DatePicker({ value, onChange, minDate }: Props) {
             mode="single"
             selected={selected}
             onSelect={handleSelect}
+            month={month}
+            onMonthChange={setMonth}
             disabled={{ before: minDate ?? new Date() }}
             showOutsideDays={false}
             components={{

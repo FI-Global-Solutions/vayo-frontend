@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import {
   Users, UserPlus, Mail, Phone, Lock, User,
   Eye, EyeOff, Trash2, X, AlertCircle, Shield,
-  ToggleLeft, ToggleRight,
+  ToggleLeft, ToggleRight, ArrowLeft,
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -322,6 +323,9 @@ export default function TeamPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/operator/dashboard" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

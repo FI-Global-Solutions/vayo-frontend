@@ -36,6 +36,12 @@ export default function TripDetailPage() {
   const date = searchParams.get("date") ?? "";
   const router = useRouter();
 
+  // Stop IDs pre-resolved from search results (stop-level search)
+  const presetOriginStopId = searchParams.get("originStopId");
+  const presetDestStopId = searchParams.get("destinationStopId");
+  const presetOriginStopName = searchParams.get("originStopName");
+  const presetDestStopName = searchParams.get("destinationStopName");
+
   const [trip, setTrip] = useState<TripDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,10 +67,23 @@ export default function TripDetailPage() {
 
         const stops: RouteStop[] = detail.stops ?? [];
 
+        // Pre-select stops passed from search results (stop-level search)
+        if (presetOriginStopId && presetDestStopId) {
+          const originExists = stops.some((s) => s.id === presetOriginStopId);
+          const destExists = stops.some((s) => s.id === presetDestStopId);
+          if (originExists && destExists) {
+            setOriginStopId(presetOriginStopId);
+            setOriginStopName(presetOriginStopName ?? stops.find(s => s.id === presetOriginStopId)?.stopName ?? "");
+            setDestStopId(presetDestStopId);
+            setDestStopName(presetDestStopName ?? stops.find(s => s.id === presetDestStopId)?.stopName ?? "");
+            setPageStep("seats");
+            return;
+          }
+        }
+
         // Restore prior stop selection from sessionStorage
         const saved = loadStopSelection(tripId);
         if (saved) {
-          // Validate that saved stop IDs still exist on this trip
           const originExists = stops.some((s) => s.id === saved.origin.id);
           const destExists = stops.some((s) => s.id === saved.dest.id);
           if (originExists && destExists) {
@@ -72,7 +91,6 @@ export default function TripDetailPage() {
             setOriginStopName(saved.origin.name);
             setDestStopId(saved.dest.id);
             setDestStopName(saved.dest.name);
-            // Restore directly to seat step — seats will load via the effect below
             setPageStep("seats");
             return;
           }
@@ -91,7 +109,7 @@ export default function TripDetailPage() {
       })
       .catch(() => router.back())
       .finally(() => setLoading(false));
-  }, [tripId, router]);
+  }, [tripId, router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load seats whenever we enter the seats step with stop IDs
   const loadSeats = useCallback(() => {

@@ -164,7 +164,12 @@ export default function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <Link href="/" className="hover:text-emerald-600">Home</Link>
+            <Link
+              href={user && ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(user.role) ? "/operator/dashboard" : "/"}
+              className="hover:text-emerald-600"
+            >
+              Home
+            </Link>
             {!user && (
               <Link href="/booking/lookup" className="hover:text-emerald-600">Find My Booking</Link>
             )}
@@ -407,7 +412,11 @@ export default function Header() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden py-3 border-t border-slate-100">
-            <Link href="/" className="block px-2 py-2 text-sm text-slate-700 hover:text-emerald-600" onClick={() => setMenuOpen(false)}>
+            <Link
+              href={user && ["OPERATOR_SUPER_ADMIN", "OPERATOR_ADMIN", "DISPATCHER", "ACCOUNTANT"].includes(user.role) ? "/operator/dashboard" : "/"}
+              className="block px-2 py-2 text-sm text-slate-700 hover:text-emerald-600"
+              onClick={() => setMenuOpen(false)}
+            >
               Home
             </Link>
             {user ? (

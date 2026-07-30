@@ -1,15 +1,49 @@
 "use client";
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowDownUp, Bus, SlidersHorizontal, X, CalendarX, MapPin } from "lucide-react";
+import { ArrowDownUp, Bus, SlidersHorizontal, X, CalendarX, MapPin, Calendar } from "lucide-react";
 import Link from "next/link";
 import SearchForm from "@/components/search/SearchForm";
 import TripCard from "@/components/trips/TripCard";
 import { searchApi } from "@/lib/api";
 import { TripSearchResult } from "@/lib/types";
-import { format } from "date-fns";
+import { format, isToday, isTomorrow } from "date-fns";
 
 type SortKey = "departure" | "price_asc" | "price_desc" | "seats";
+
+function AvailableDateChips({
+  dates,
+  origin,
+  destination,
+}: {
+  dates: string[];
+  origin: string;
+  destination: string;
+}) {
+  if (dates.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 justify-center">
+      {dates.slice(0, 7).map((d) => {
+        const dateObj = new Date(d + "T00:00:00");
+        let label: string;
+        if (isToday(dateObj)) label = "Today";
+        else if (isTomorrow(dateObj)) label = "Tomorrow";
+        else label = format(dateObj, "EEE d MMM");
+        const href = `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${d}`;
+        return (
+          <a
+            key={d}
+            href={href}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 hover:border-emerald-300 transition-colors"
+          >
+            <Calendar className="h-3.5 w-3.5" />
+            {label}
+          </a>
+        );
+      })}
+    </div>
+  );
+}
 
 const BUS_TYPES = ["MINIBUS", "STANDARD", "LUXURY", "SLEEPER"] as const;
 type BusType = (typeof BUS_TYPES)[number];
@@ -28,15 +62,19 @@ function SearchPage() {
   const date = params.get("date") ?? "";
 
   const [trips, setTrips] = useState<TripSearchResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sort, setSort] = useState<SortKey>("departure");
   const [selectedTypes, setSelectedTypes] = useState<Set<BusType>>(new Set());
   const [minSeats, setMinSeats] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
+
+  // Only search when all three params are present
+  const canSearch = !!(origin && destination && date);
 
   const fetchTrips = useCallback(async () => {
-    if (!origin || !destination || !date) return;
+    if (!canSearch) return;
     setLoading(true);
     setError("");
     try {
@@ -47,9 +85,17 @@ function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }, [origin, destination, date]);
+  }, [origin, destination, date, canSearch]);
 
   useEffect(() => { fetchTrips(); }, [fetchTrips]);
+
+  // When origin+destination are known, always fetch available dates
+  useEffect(() => {
+    if (!origin || !destination) return;
+    searchApi.availableDates(origin, destination)
+      .then((r) => setAvailableDates(r.data.data ?? []))
+      .catch(() => {});
+  }, [origin, destination]);
 
   const toggleType = (t: BusType) => {
     setSelectedTypes((prev) => {
@@ -87,6 +133,32 @@ function SearchPage() {
   const formattedDate = date
     ? format(new Date(date + "T00:00:00"), "EEE, dd MMM yyyy")
     : "";
+
+  // No date yet — show form pre-filled + available dates
+  if (!date) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="mb-6">
+          <SearchForm />
+        </div>
+        {origin && destination && (
+          <div className="mt-6 bg-white rounded-2xl border border-slate-200 px-6 py-10 text-center">
+            <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-7 w-7 text-emerald-500" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 mb-1">{origin} → {destination}</h2>
+            <p className="text-sm text-slate-500 mb-6">Pick a travel date above to see available buses.</p>
+            {availableDates.length > 0 && (
+              <>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Buses available on</p>
+                <AvailableDateChips dates={availableDates} origin={origin} destination={destination} />
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -265,26 +337,33 @@ function SearchPage() {
                 <span className="font-semibold text-slate-700">{formattedDate}</span>.
               </p>
               <p className="text-xs text-slate-400 mb-8">
-                This route may not be available yet, or all seats are sold out.
+                This route may not be available on this date, or all seats are sold out.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-                    window.location.href = `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${tomorrow}`;
-                  }}
-                  className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-                >
-                  <CalendarX className="h-4 w-4" /> Try tomorrow
-                </button>
-                <Link
-                  href="/"
-                  className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
-                >
-                  <MapPin className="h-4 w-4" /> Change route
-                </Link>
-              </div>
+              {availableDates.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                    Buses available on
+                  </p>
+                  <AvailableDateChips dates={availableDates} origin={origin} destination={destination} />
+                  <div className="mt-6">
+                    <Link
+                      href="/"
+                      className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                    >
+                      <MapPin className="h-4 w-4" /> Browse all routes
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+                  >
+                    <MapPin className="h-4 w-4" /> Browse all routes
+                  </Link>
+                </div>
+              )}
             </>
           )}
         </div>

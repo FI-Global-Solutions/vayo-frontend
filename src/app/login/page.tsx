@@ -3,30 +3,18 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Mail, Lock, Eye, EyeOff, Phone, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Phone, ArrowLeft, ChevronDown } from "lucide-react";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { authApi } from "@/lib/api";
 import { saveAuth } from "@/store/auth";
 import { AuthResponse } from "@/lib/types";
+import { COUNTRIES, type Country } from "@/lib/countries";
 
 type LoginMethod = "phone" | "email";
 type Step = "form" | "otp";
 type PhoneFormData = { phone: string; password: string };
 type EmailFormData = { email: string; password: string };
-
-// Valid Rwandan mobile prefixes (9 digits after +250)
-// MTN: 78x, 79x  |  Airtel: 73x  |  new allocations covered by 72x
-const RW_PHONE_RE = /^(078|079|073|072)\d{6}$|^(78|79|73|72)\d{7}$/;
-
-function validateRwandaPhone(value: string) {
-  if (!value) return "Phone number is required";
-  const digits = value.replace(/\D/g, "");
-  // Accept with or without leading 0 (user types without country code)
-  if (digits.length !== 9) return "Enter 9 digits (e.g. 788 000 000)";
-  if (!/^(78|79|73|72)/.test(digits)) return "Must be an MTN (078, 079) or Airtel (073) Rwanda number";
-  return true;
-}
 
 function validateEmail(value: string) {
   if (!value) return "Email is required";
@@ -44,6 +32,8 @@ export default function LoginPage() {
   const [maskedEmail, setMaskedEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [otpLoading, setOtpLoading] = useState(false);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
+  const [countryOpen, setCountryOpen] = useState(false);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const router = useRouter();
 
@@ -80,7 +70,7 @@ export default function LoginPage() {
   };
 
   const onPhoneSubmit = async (data: PhoneFormData) => {
-    const identifier = "+250" + data.phone.replace(/\D/g, "");
+    const identifier = country.code + data.phone.replace(/\D/g, "");
     try {
       const res = await authApi.login(identifier, data.password);
       if (res.status === 202) {
@@ -163,7 +153,7 @@ export default function LoginPage() {
       if (method === "phone") {
         const phone = phoneForm.getValues("phone").replace(/\D/g, "");
         const password = phoneForm.getValues("password");
-        identifier = "+250" + phone;
+        identifier = country.code + phone;
         await authApi.login(identifier, password);
       } else {
         const email = emailForm.getValues("email").trim().toLowerCase();
@@ -288,20 +278,51 @@ export default function LoginPage() {
                   Phone number
                   <span className="text-red-500 ml-0.5">*</span>
                 </label>
+                {/* Country selector sits outside overflow-hidden wrapper */}
+                <div className="relative shrink-0 mb-[-1px]">
+                  {countryOpen && (
+                    <div className="absolute z-50 top-full left-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg w-52 max-h-64 overflow-y-auto">
+                      {COUNTRIES.map((c) => (
+                        <button
+                          key={c.code}
+                          type="button"
+                          onClick={() => { setCountry(c); setCountryOpen(false); phoneForm.setValue("phone", ""); }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-emerald-50 transition-colors ${country.code === c.code ? "bg-emerald-50 text-emerald-700 font-semibold" : "text-slate-700"}`}
+                        >
+                          <span className="text-base">{c.flag}</span>
+                          <span className="flex-1 text-left">{c.name}</span>
+                          <span className="text-xs text-slate-400">{c.code}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className={`flex border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500 ${phoneForm.formState.errors.phone ? "border-red-400" : "border-slate-200"}`}>
-                  <div className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 shrink-0">
-                    <span className="text-base leading-none">🇷🇼</span>
-                    <span className="text-sm font-medium text-slate-600">+250</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCountryOpen((o) => !o)}
+                    className="flex items-center gap-1.5 px-3 bg-slate-50 border-r border-slate-200 hover:bg-slate-100 transition-colors shrink-0"
+                  >
+                    <span className="text-base leading-none">{country.flag}</span>
+                    <span className="text-sm font-medium text-slate-600">{country.code}</span>
+                    <ChevronDown className="h-3 w-3 text-slate-400" />
+                  </button>
                   <input
-                    {...phoneForm.register("phone", { validate: validateRwandaPhone })}
+                    {...phoneForm.register("phone", {
+                      required: "Phone number is required",
+                      validate: (v) => {
+                        const digits = v.replace(/\D/g, "");
+                        if (digits.length !== country.digits) return `Enter ${country.digits} digits`;
+                        return true;
+                      },
+                    })}
                     type="tel"
                     inputMode="numeric"
-                    placeholder="788 000 000"
-                    maxLength={9}
+                    placeholder={country.hint}
+                    maxLength={country.digits}
                     autoComplete="tel-national"
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+                      const val = e.target.value.replace(/\D/g, "").slice(0, country.digits);
                       phoneForm.setValue("phone", val, { shouldValidate: phoneForm.formState.isSubmitted });
                     }}
                     onKeyDown={(e) => {
@@ -315,7 +336,7 @@ export default function LoginPage() {
                 {phoneForm.formState.errors.phone ? (
                   <p className="text-red-500 text-xs mt-1">{phoneForm.formState.errors.phone.message}</p>
                 ) : (
-                  <p className="text-xs text-slate-400 mt-1">MTN (078, 079) or Airtel (073) Rwanda</p>
+                  <p className="text-xs text-slate-400 mt-1">{country.name} · {country.digits} digits after {country.code}</p>
                 )}
               </div>
 

@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import {
-  AlertTriangle, CheckCircle2, Clock, Loader2, Phone, User, MapPin,
+  AlertTriangle, CheckCircle2, Clock, Loader2, Phone, User, MapPin, ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { operatorApi } from "@/lib/api";
@@ -85,6 +86,9 @@ export default function OperatorRefundsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/operator/dashboard" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Refund Requests</h1>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
   Calendar, Plus, X, MapPin, Bus, Clock,
-  Users, ArrowRight, AlertCircle, ChevronLeft,
+  Users, ArrowRight, ArrowLeft, AlertCircle, ChevronLeft,
   ChevronRight, Loader2, Lightbulb, ChevronDown, ChevronUp,
   Grid3X3,
 } from "lucide-react";
@@ -501,6 +501,9 @@ export default function OperatorTripsPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/operator/dashboard" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Trips</h1>

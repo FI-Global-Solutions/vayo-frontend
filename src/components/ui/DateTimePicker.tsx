@@ -2,8 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { DayPicker } from "react-day-picker";
 import { format, isValid } from "date-fns";
-import { CalendarDays, Clock, ChevronDown } from "lucide-react";
-import "react-day-picker/style.css";
+import { CalendarDays, Clock, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DateTimePickerProps {
   value: string; // ISO string "YYYY-MM-DDTHH:mm"
@@ -97,18 +96,40 @@ export function DateTimePicker({
               month={month}
               onMonthChange={setMonth}
               disabled={minDate ? { before: minDate } : undefined}
+              components={{
+                Chevron: ({ orientation }) =>
+                  orientation === "left"
+                    ? <ChevronLeft className="h-4 w-4" />
+                    : <ChevronRight className="h-4 w-4" />,
+              }}
               classNames={{
                 root: "!m-0",
                 months: "flex flex-col",
                 month: "space-y-1",
-                month_caption: "flex justify-center items-center relative py-2",
-                caption_label: "text-sm font-semibold text-slate-800",
-                nav: "flex items-center",
-                button_previous: "h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 absolute left-1",
-                button_next: "h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 absolute right-1",
+                month_caption: "flex justify-center items-center relative h-10 mb-1",
+                caption_label: "text-sm font-bold text-slate-800 select-none",
+                nav: "flex items-center justify-between absolute inset-x-0 top-0 h-10 pointer-events-none",
+                button_previous: [
+                  "pointer-events-auto",
+                  "h-8 w-8 rounded-xl border border-slate-200 bg-white shadow-sm",
+                  "flex items-center justify-center",
+                  "text-slate-600 hover:text-emerald-600",
+                  "hover:bg-emerald-50 hover:border-emerald-300",
+                  "active:scale-95 transition-all duration-150",
+                  "absolute left-0",
+                ].join(" "),
+                button_next: [
+                  "pointer-events-auto",
+                  "h-8 w-8 rounded-xl border border-slate-200 bg-white shadow-sm",
+                  "flex items-center justify-center",
+                  "text-slate-600 hover:text-emerald-600",
+                  "hover:bg-emerald-50 hover:border-emerald-300",
+                  "active:scale-95 transition-all duration-150",
+                  "absolute right-0",
+                ].join(" "),
                 month_grid: "w-full border-collapse",
                 weekdays: "flex mb-1",
-                weekday: "flex-1 text-xs font-medium text-slate-400 text-center py-1",
+                weekday: "flex-1 text-xs font-semibold text-slate-400 text-center py-1",
                 week: "flex",
                 day: "flex-1 text-center",
                 day_button: "w-8 h-8 mx-auto rounded-lg text-sm hover:bg-emerald-50 hover:text-emerald-700 transition-colors",

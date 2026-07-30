@@ -1,9 +1,10 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { format } from "date-fns";
 import {
   TrendingUp, Clock, Wallet, Banknote, ChevronDown, ChevronUp,
-  Loader2, AlertCircle, CheckCircle2, Pencil,
+  Loader2, AlertCircle, CheckCircle2, Pencil, ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { payoutApi } from "@/lib/api";
@@ -422,6 +423,9 @@ export default function OperatorPayoutsPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Link href="/operator/dashboard" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-emerald-600 mb-6 transition-colors">
+        <ArrowLeft className="h-4 w-4" /> Back to Dashboard
+      </Link>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Payouts</h1>
         <p className="text-slate-500 text-sm mt-1">Your earnings balance and payout history</p>

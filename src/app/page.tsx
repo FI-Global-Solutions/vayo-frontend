@@ -1,4 +1,5 @@
 import SearchForm from "@/components/search/SearchForm";
+import RoutesBrowser from "@/components/search/RoutesBrowser";
 import { Shield, Smartphone, Clock, MapPin, Sparkles, Bell, ChevronDown } from "lucide-react";
 import Link from "next/link";
 
@@ -107,6 +108,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ── Available routes (live, date-free) ───────────────────────────── */}
+      <RoutesBrowser />
 
       {/* ── How it works ─────────────────────────────────────────────────── */}
       <section className="bg-white py-16">
