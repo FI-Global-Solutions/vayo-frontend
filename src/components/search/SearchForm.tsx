@@ -22,15 +22,9 @@ function SearchFormInner() {
   const preTo   = params.get("destination") || params.get("to") || "";
   const preDate = params.get("date") || "";
 
-  // Set date: use URL param if present, otherwise default to tomorrow
+  // Set date from URL param only — no default, date is optional
   useEffect(() => {
-    if (preDate) { setDate(preDate); return; }
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const yyyy = tomorrow.getFullYear();
-    const mm = String(tomorrow.getMonth() + 1).padStart(2, "0");
-    const dd = String(tomorrow.getDate()).padStart(2, "0");
-    setDate(`${yyyy}-${mm}-${dd}`);
+    if (preDate) setDate(preDate);
   }, [preDate]);
 
   // Apply origin/destination pre-fill
@@ -69,11 +63,12 @@ function SearchFormInner() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!origin || !destination || !date) return;
+    if (!origin || !destination) return;
     setLoading(true);
-    router.push(
-      `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${date}`
-    );
+    const url = date
+      ? `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&date=${date}`
+      : `/search?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    router.push(url);
   };
 
   return (
@@ -122,7 +117,7 @@ function SearchFormInner() {
         <DatePicker value={date} onChange={setDate} minDate={new Date()} />
         <button
           type="submit"
-          disabled={loading || !origin || !destination || !date}
+          disabled={loading || !origin || !destination}
           className={cn(
             "flex items-center justify-center gap-1.5",
             "bg-emerald-600 hover:bg-emerald-700 text-white",
@@ -175,7 +170,7 @@ function SearchFormInner() {
           <label className="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider opacity-0">Go</label>
           <button
             type="submit"
-            disabled={loading || !origin || !destination || !date}
+            disabled={loading || !origin || !destination}
             className={cn(
               "flex items-center justify-center gap-2",
               "bg-emerald-600 hover:bg-emerald-700 text-white",

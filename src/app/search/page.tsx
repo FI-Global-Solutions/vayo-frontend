@@ -9,6 +9,7 @@ import { searchApi } from "@/lib/api";
 import { TripSearchResult } from "@/lib/types";
 import { format, isToday, isTomorrow } from "date-fns";
 
+
 type SortKey = "departure" | "price_asc" | "price_desc" | "seats";
 
 function AvailableDateChips({
@@ -60,6 +61,7 @@ function SearchPage() {
   const origin = params.get("origin") ?? "";
   const destination = params.get("destination") ?? "";
   const date = params.get("date") ?? "";
+
 
   const [trips, setTrips] = useState<TripSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,7 +136,7 @@ function SearchPage() {
     ? format(new Date(date + "T00:00:00"), "EEE, dd MMM yyyy")
     : "";
 
-  // No date yet — show form pre-filled + available dates
+  // No date selected — show available dates for this route
   if (!date) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -142,17 +144,22 @@ function SearchPage() {
           <SearchForm />
         </div>
         {origin && destination && (
-          <div className="mt-6 bg-white rounded-2xl border border-slate-200 px-6 py-10 text-center">
+          <div className="mt-6 bg-white rounded-2xl border border-slate-200 px-6 py-12 text-center">
             <div className="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Calendar className="h-7 w-7 text-emerald-500" />
             </div>
             <h2 className="text-lg font-bold text-slate-800 mb-1">{origin} → {destination}</h2>
-            <p className="text-sm text-slate-500 mb-6">Pick a travel date above to see available buses.</p>
-            {availableDates.length > 0 && (
+            {availableDates.length > 0 ? (
               <>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Buses available on</p>
+                <p className="text-sm text-slate-500 mb-6">Choose a date to see available buses.</p>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Available dates</p>
                 <AvailableDateChips dates={availableDates} origin={origin} destination={destination} />
               </>
+            ) : (
+              <p className="text-sm text-slate-500 mt-2">
+                No upcoming trips found for this route.{" "}
+                <Link href="/#routes" className="text-emerald-600 hover:underline">Browse all routes</Link>
+              </p>
             )}
           </div>
         )}
