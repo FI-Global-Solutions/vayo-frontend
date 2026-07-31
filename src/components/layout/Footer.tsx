@@ -20,7 +20,7 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/" className="hover:text-white">
+                <Link href="/#routes" className="hover:text-white">
                   Search Buses
                 </Link>
               </li>
