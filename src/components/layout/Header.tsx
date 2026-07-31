@@ -2,12 +2,13 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, X, LogOut, LayoutDashboard, Ticket, ChevronDown, RefreshCw, Banknote, ShieldCheck, RotateCcw, Settings2, SlidersHorizontal, Bell, Building2, Loader2 } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, Ticket, ChevronDown, RefreshCw, Banknote, ShieldCheck, RotateCcw, Settings2, SlidersHorizontal, Bell, Building2, Loader2, BookOpen } from "lucide-react";
 import { getStoredUser, clearAuth } from "@/store/auth";
 import { AuthUser, AdminNotification } from "@/lib/types";
 import { VayoLogo } from "@/components/ui/VayoLogo";
 import { toast } from "sonner";
 import { adminApi } from "@/lib/api";
+import HelpPanel from "@/components/help/HelpPanel";
 
 function getInitials(user: AuthUser) {
   return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
@@ -43,6 +44,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
@@ -173,7 +175,18 @@ export default function Header() {
             {!user && (
               <Link href="/booking/lookup" className="hover:text-emerald-600">Find My Booking</Link>
             )}
-            <Link href="/#faq" className="hover:text-emerald-600">FAQ</Link>
+            {isOperatorStaff ? (
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Guide
+              </button>
+            ) : (
+              <Link href="/#faq" className="hover:text-emerald-600">FAQ</Link>
+            )}
           </nav>
 
           {/* Desktop auth area */}
@@ -477,7 +490,18 @@ export default function Header() {
                     Platform Config
                   </Link>
                 )}
-                <Link href="/#faq" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>FAQ</Link>
+                {isOperatorStaff ? (
+                  <button
+                    type="button"
+                    onClick={() => { setMenuOpen(false); setHelpOpen(true); }}
+                    className="flex items-center gap-2 px-2 py-2 text-sm text-slate-700 hover:text-blue-600"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Operator Guide
+                  </button>
+                ) : (
+                  <Link href="/#faq" className="block px-2 py-2 text-sm text-slate-700" onClick={() => setMenuOpen(false)}>FAQ</Link>
+                )}
                 <button type="button" onClick={handleLogout} className="flex items-center gap-2 w-full px-2 py-2 text-sm text-red-500 mt-1">
                   <LogOut className="h-4 w-4" />
                   Log out
@@ -494,6 +518,8 @@ export default function Header() {
           </div>
         )}
       </div>
+
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
     </header>
   );
 }
