@@ -110,7 +110,9 @@ export default function HomePage() {
       </section>
 
       {/* ── Available routes (live, date-free) ───────────────────────────── */}
-      <RoutesBrowser />
+      <section id="routes">
+        <RoutesBrowser />
+      </section>
 
       {/* ── How it works ─────────────────────────────────────────────────── */}
       <section className="bg-white py-16">

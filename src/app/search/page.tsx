@@ -70,7 +70,7 @@ function SearchPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
 
-  // Only search when all three params are present
+  // Trip search requires all three; route+date chips work with just origin+destination
   const canSearch = !!(origin && destination && date);
 
   const fetchTrips = useCallback(async () => {
@@ -357,7 +357,7 @@ function SearchPage() {
               ) : (
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <Link
-                    href="/"
+                    href="/#routes"
                     className="inline-flex items-center gap-2 border border-slate-200 hover:border-slate-300 text-slate-600 text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
                   >
                     <MapPin className="h-4 w-4" /> Browse all routes
